@@ -14,6 +14,11 @@
       "id": "go",
       "name": "Go \u2014 19\u00d719 goban",
       "ref": "packs/go.json"
+    },
+    {
+      "id": "worldmap",
+      "name": "World map (MapLibre)",
+      "ref": "packs/world.json"
     }
   ]
 }

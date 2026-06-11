@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>JustPlay</title>
+  <!--
+    GitHub Pages SPA redirect (rafgraph/spa-github-pages).
+    A deep link like /whitechapel/org/repo/game.json would 404 on Pages; this
+    rewrites it to /whitechapel/?/org/repo/game.json and index.html restores the
+    path. pathSegmentsToKeep = 1 keeps the project sub-path (the repo name).
+    Set it to 0 if you host this at a domain root.
+  -->
+  <script>
+    var pathSegmentsToKeep = 1;
+    var l = window.location;
+    l.replace(
+      l.protocol + '//' + l.hostname + (l.port ? ':' + l.port : '') +
+      l.pathname.split('/').slice(0, 1 + pathSegmentsToKeep).join('/') + '/?/' +
+      l.pathname.slice(1).split('/').slice(pathSegmentsToKeep).join('/').replace(/&/g, '~and~') +
+      (l.search ? '&' + l.search.slice(1).replace(/&/g, '~and~') : '') +
+      l.hash
+    );
+  </script>
+</head>
+<body></body>
+</html>

@@ -319,6 +319,16 @@ body {
 .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 8px; }
 .primary-btn.compact { width: auto; padding: 10px 22px; margin-top: 0; }
 
+/* ============ map board (MapLibre) ============ */
+.map-container { position: absolute; inset: 0; z-index: 1; background: #0e1418; }
+.map-container.hidden { display: none; }
+.maplibregl-map { font-family: var(--font-ui); }
+/* pieces pinned on the map — maplibre owns their transform, so don't transition it */
+.maplibregl-marker.marker { transition: filter .12s; will-change: transform; }
+.map-piece { filter: drop-shadow(0 2px 3px rgba(0,0,0,.6)); }
+/* keep the floating UI above the map canvas */
+.stage-wrap .trash, .stage-wrap .save-badge { z-index: 30; }
+
 @media (max-width: 560px) {
   .topbar { flex-wrap: wrap; gap: 8px; }
   .topbar-room { margin-left: 0; }

@@ -1,0 +1,27 @@
+{
+  "schema": "boardgame/1",
+  "id": "worldmap",
+  "name": "World map (MapLibre)",
+  "description": "A live MapLibre vector map as the board. Tokens pin to real lng/lat and stay put as everyone pans and zooms. Swap board.map for any MapLibre style (OpenFreeMap, OpenFantasyMap, your own).",
+  "board": {
+    "map": "https://tiles.openfreemap.org/styles/liberty",
+    "center": [8, 30],
+    "zoom": 1.5,
+    "grid": { "step": 15, "color": "#3a6ea5", "width": 0.6, "opacity": 0.45 },
+    "pieceSize": 0.05
+  },
+  "pieces": [
+    { "type": "pin", "label": "Pin", "glyph": "📍" },
+    { "type": "flag-red", "label": "Red flag", "glyph": "⚑", "color": "#e0533d" },
+    { "type": "flag-blue", "label": "Blue flag", "glyph": "⚑", "color": "#3da3e0" },
+    { "type": "crown", "label": "Crown", "glyph": "♛", "color": "#d4a24e" },
+    { "type": "x", "label": "Mark", "glyph": "✖", "color": "#ffffff", "bg": "#a8392c" },
+    { "type": "star", "label": "Star", "glyph": "★", "color": "#f0c674" }
+  ],
+  "setup": [
+    { "type": "crown", "x": -0.1278, "y": 51.5074 },
+    { "type": "pin", "x": 12.4964, "y": 41.9028 },
+    { "type": "flag-red", "x": 2.3522, "y": 48.8566 },
+    { "type": "star", "x": -74.006, "y": 40.7128 }
+  ]
+}

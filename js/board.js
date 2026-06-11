@@ -168,21 +168,43 @@
 
     /* ============ pointer plumbing ============ */
     _bind() {
-      this.viewport.addEventListener('pointerdown', (e) => this._onDown(e));
-      window.addEventListener('pointermove', (e) => this._onMove(e), { passive: false });
-      window.addEventListener('pointerup', (e) => this._onUp(e));
-      window.addEventListener('pointercancel', () => this._endGesture());
-      this.viewport.addEventListener('wheel', (e) => {
-        e.preventDefault();
-        const r = this.viewport.getBoundingClientRect();
-        this.zoomAt(e.clientX - r.left, e.clientY - r.top, Math.exp(-e.deltaY * 0.0015));
-      }, { passive: false });
-      this.markersEl.addEventListener('contextmenu', (e) => {
-        const el = e.target.closest('.marker');
-        if (!el) return;
-        e.preventDefault();
-        this.cb.onRemove && this.cb.onRemove(el.dataset.id);
-      });
+      this._h = {
+        down: (e) => this._onDown(e),
+        move: (e) => this._onMove(e),
+        up: (e) => this._onUp(e),
+        cancel: () => this._endGesture(),
+        wheel: (e) => {
+          e.preventDefault();
+          const r = this.viewport.getBoundingClientRect();
+          this.zoomAt(e.clientX - r.left, e.clientY - r.top, Math.exp(-e.deltaY * 0.0015));
+        },
+        ctx: (e) => {
+          const el = e.target.closest('.marker');
+          if (!el) return;
+          e.preventDefault();
+          this.cb.onRemove && this.cb.onRemove(el.dataset.id);
+        },
+      };
+      this.viewport.addEventListener('pointerdown', this._h.down);
+      window.addEventListener('pointermove', this._h.move, { passive: false });
+      window.addEventListener('pointerup', this._h.up);
+      window.addEventListener('pointercancel', this._h.cancel);
+      this.viewport.addEventListener('wheel', this._h.wheel, { passive: false });
+      this.markersEl.addEventListener('contextmenu', this._h.ctx);
+    }
+
+    dispose() {
+      const h = this._h;
+      if (h) {
+        this.viewport.removeEventListener('pointerdown', h.down);
+        window.removeEventListener('pointermove', h.move);
+        window.removeEventListener('pointerup', h.up);
+        window.removeEventListener('pointercancel', h.cancel);
+        this.viewport.removeEventListener('wheel', h.wheel);
+        this.markersEl.removeEventListener('contextmenu', h.ctx);
+      }
+      this.els.forEach((el) => el.remove());
+      this.els.clear();
     }
 
     startCreate(type, ev) {

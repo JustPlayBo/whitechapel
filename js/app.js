@@ -35,12 +35,13 @@
     packs = await loadRegistry();
     fillSelect(gameSelect, packs);
 
-    const wanted = params.get('game');
-    const choice = paramToChoice(wanted, packs);
+    // a game can come from the path (/<org>/<repo>/<game>) or the ?game= param
+    const choice = routeGameRef() || paramToChoice(params.get('game'));
     if (choice) {
       lobbyChoice = choice;
       const hit = packs.find((p) => p.ref === choice);
-      if (hit) gameSelect.value = hit.ref; else showChosen(wanted);
+      if (hit) { gameSelect.value = hit.ref; }
+      else { try { const def = await GameDef.load(choice); showChosen(def.name); } catch (e) { /* show on enter */ } }
     } else {
       lobbyChoice = gameSelect.value || packs[0].ref;
     }
@@ -84,7 +85,24 @@
   function paramToChoice(p) {
     if (!p) return null;
     const hit = packs.find((x) => x.id === p || x.ref === p);
-    return hit ? hit.ref : p;            // an id maps to its ref; otherwise treat as URL
+    return hit ? hit.ref : p;            // an id maps to its ref; otherwise a URL / gh ref
+  }
+
+  // the app's own directory, e.g. "/whitechapel/" — used to peel off the route
+  function appBasePath() {
+    const s = [...document.scripts].find((x) => /\/js\/app\.js(\?|$)/.test(x.src));
+    try { return new URL('../', s ? s.src : location.href).pathname; }
+    catch (e) { return '/'; }
+  }
+  // /<base>/<org>/<repo>/<game…>  ->  "org/repo/game…" (a jsDelivr gh shorthand)
+  function routeGameRef() {
+    let p = decodeURIComponent(location.pathname);
+    const base = appBasePath();
+    if (p.startsWith(base)) p = p.slice(base.length);
+    p = p.replace(/^\/+|\/+$/g, '');
+    if (!p || p === 'index.html') return null;
+    const segs = p.split('/').filter(Boolean);
+    return segs.length >= 3 ? segs.join('/') : null;
   }
   function fillSelect(sel, list) {
     sel.innerHTML = '';
@@ -105,16 +123,10 @@
     $('roomCode').textContent = room;
 
     const state = new window.BoardState(room);
-    const board = new window.Board({
+    const refs = {
       viewport: $('viewport'), stage: $('stage'), board: $('board'), boardImg: $('boardImg'),
-      markers: $('markers'), cursors: $('cursors'), trash: $('trash'),
-    }, {
-      onAdd: (type, x, y) => { const m = state.add(type, x, y, name); net.publishMarker(m); },
-      onMove: (mid, x, y) => { const m = state.move(mid, x, y, name); if (m) net.publishMarker(m); },
-      onLive: (mid, x, y) => liveMove(mid, x, y),
-      onRemove: (mid) => { if (state.remove(mid)) net.deleteMarker(mid); },
-      onCursor: (x, y) => net.publishCursor(x, y),
-    });
+      markers: $('markers'), cursors: $('cursors'), trash: $('trash'), mapContainer: $('mapContainer'),
+    };
 
     let liveTimer = 0;
     function liveMove(mid, x, y) {
@@ -125,7 +137,27 @@
       net.publishMarker({ id: mid, type: m.type, x, y, t: now, by: name });
     }
 
+    // one callback set, shared by whichever board controller is active
+    const cb = {
+      onAdd: (type, x, y) => { const m = state.add(type, x, y, name); net.publishMarker(m); },
+      onMove: (mid, x, y) => { const m = state.move(mid, x, y, name); if (m) net.publishMarker(m); },
+      onLive: (mid, x, y) => liveMove(mid, x, y),
+      onRemove: (mid) => { if (state.remove(mid)) net.deleteMarker(mid); },
+      onCursor: (x, y) => net.publishCursor(x, y),
+    };
+
+    // pick the right controller for the pack: a MapLibre map, or the DOM board
+    let board = null, boardKind = null;
+    function ensureController(def) {
+      const kind = def.board.map ? 'map' : 'dom';
+      if (board && boardKind === kind) return;
+      if (board && board.dispose) board.dispose();
+      board = (kind === 'map') ? new window.MapBoard(refs, cb) : new window.Board(refs, cb);
+      boardKind = kind;
+    }
+
     state.onChange((kind, m) => {
+      if (!board) return;
       if (kind === 'saved') { flashSave(); return; }
       if (kind === 'clear') { board.renderAll([]); return; }
       if (kind === 'remove') { board.removeEl(m.id); return; }
@@ -136,9 +168,10 @@
     let currentDef = null;
     let roomGameKnown = false;
 
-    function applyGame(def) {
+    async function applyGame(def) {
+      ensureController(def);
       currentDef = def;
-      board.setDef(def);
+      await board.setDef(def);              // MapBoard.setDef is async (loads MapLibre)
       buildTray(def, board);
       $('gameName').textContent = def.name;
       board.renderAll(state.all());
@@ -146,7 +179,7 @@
     }
     async function loadAndApply(input, opts) {
       const def = await GameDef.load(input);
-      applyGame(def);
+      await applyGame(def);
       if (opts && opts.publish) { net.publishGame(GameDef.toPayload(def)); roomGameKnown = true; }
       return def;
     }
@@ -186,11 +219,10 @@
       if (!roomGameKnown && currentDef) { net.publishGame(GameDef.toPayload(currentDef)); roomGameKnown = true; }
     }, 900);
 
-    buildTray(currentDef, board);
-    wireMenu(state, net, board, room, () => currentDef, loadAndApply);
-    window.addEventListener('resize', () => board.fit());
+    wireMenu(state, net, () => board, room, () => currentDef, loadAndApply);
+    window.addEventListener('resize', () => board && board.fit());
     window.addEventListener('beforeunload', () => net.leave());
-    window.__lfw = { state, net, board, players, identity, get def() { return currentDef; } };
+    window.__lfw = { state, net, players, identity, get board() { return board; }, get def() { return currentDef; } };
 
     function renderPresence() {
       const wrap = $('presence');
@@ -231,7 +263,7 @@
   }
 
   /* ---------------- menu ---------------- */
-  function wireMenu(state, net, board, room, getDef, loadAndApply) {
+  function wireMenu(state, net, getBoard, room, getDef, loadAndApply) {
     const menu = $('menu'), btn = $('menuBtn');
     btn.onclick = (e) => { e.stopPropagation(); menu.classList.toggle('hidden'); };
     document.addEventListener('click', () => menu.classList.add('hidden'));
@@ -240,7 +272,7 @@
       const act = e.target.dataset.act;
       if (!act) return;
       menu.classList.add('hidden');
-      if (act === 'recenter') board.fit();
+      if (act === 'recenter') getBoard().fit();
       if (act === 'seed') seed(state, net, getDef());
       if (act === 'change') {
         const input = await openLoader();

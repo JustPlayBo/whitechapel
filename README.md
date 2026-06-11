@@ -13,9 +13,12 @@ the engine is the same. It ships with three packs:
 | **Whitechapel — Stay At Home** | the `LFW_StayAtHome.pptx` map (image) | Jack, carriage, lamppost, constables, discs (images) |
 | **Chess — open table** | generated checkerboard | the 12 chess pieces (unicode glyphs) |
 | **Go — 19×19 goban** | generated grid | black & white stones |
+| **World map** | a live **MapLibre** vector map | flags, pins, crowns at real lng/lat |
 
-…and anyone can load their own pack by URL or by pasting JSON. A complete pack can
-be authored with **zero binary assets** (pattern board + glyph pieces).
+…and anyone can load their own pack by **URL**, **pasted JSON**, or straight from
+**GitHub via jsDelivr** — `gh:<org>/<repo>/<path>` (or just `<org>/<repo>/<path>`),
+or even a clean path `…/<org>/<repo>/<game>` in the address bar. A complete pack can
+be authored with **zero binary assets** (pattern/map board + glyph pieces).
 
 → Pack format: [`packs/SCHEMA.md`](packs/SCHEMA.md)
 
@@ -118,11 +121,13 @@ js/gamedef.js           the abstraction: load/normalise a pack, render board & p
 js/identity.js          per-player colour
 js/state.js             board model + localStorage persistence (last-writer-wins)
 js/net.js               MQTT transport (HiveMQ over WebSockets), incl. the `game` topic
-js/board.js             rendering, pan/zoom, drag, cursors — all driven by the def
-js/app.js               glue: lobby, pack picker, presence, menu, toasts
+js/board.js             DOM board: image/pattern boards, pan/zoom, drag, cursors
+js/mapboard.js          MapLibre board: geo (lng/lat) pieces, grid overlay, cursors
+js/app.js               glue: lobby, pack picker, controller switching, presence, menu
 lib/mqtt.min.js         vendored MQTT.js v5 (no CDN needed)
+404.html                GitHub-Pages SPA redirect (enables /<org>/<repo>/<game> paths)
 packs/index.json        registry of built-in packs (lobby dropdown)
-packs/*.json            the game packs
+packs/*.json            the game packs (incl. world.json — a MapLibre map)
 packs/SCHEMA.md         pack format reference
 assets/board.jpg        Whitechapel map (pptx image11)
 assets/markers/*.png    Whitechapel tokens (pptx image1–10)

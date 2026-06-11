@@ -26,15 +26,16 @@ patterns and pieces can be unicode/emoji glyphs.
 "board": {
   "image": "url | data-uri",          // a picture board, OR…
   "pattern": { "type": "checker | grid | solid", ... },
+  "map": "maplibre-style-url | {…}",   // …OR a live MapLibre map
   "aspect": 1.6,                        // width / height; derived if omitted
   "color": "#140e09",                   // backdrop behind the board
   "pieceSize": 0.05                     // default piece size, fraction of board width
 }
 ```
 
-Give **either** `image` **or** `pattern`. For an image, `aspect` is auto-detected
-from the file if you omit it. Relative `image` paths resolve against the pack's own
-URL.
+Give **one** of `image`, `pattern`, or `map`. For an image, `aspect` is auto-detected
+from the file if you omit it. Relative `image`/`map` paths resolve against the pack's
+own URL.
 
 **Patterns** (generated as crisp inline SVG):
 
@@ -45,6 +46,27 @@ URL.
 | `grid`    | `cols`, `rows`, `line`, `bg`, `stars` (array of `[c,r]`) |
 
 For patterns, `aspect` defaults to `cols / rows`.
+
+### Map boards (MapLibre)
+
+Set `board.map` to a [MapLibre GL **style**](https://maplibre.org/maplibre-style-spec/)
+— a URL (e.g. `https://tiles.openfreemap.org/styles/liberty`, an OpenFantasyMap style,
+or your own) or an inline style object. MapLibre GL is loaded lazily the first time a
+map pack is opened.
+
+```json
+"board": {
+  "map": "https://tiles.openfreemap.org/styles/liberty",
+  "center": [8, 30],                          // [lng, lat]
+  "zoom": 1.5,
+  "grid": { "step": 15, "color": "#3a6ea5", "width": 0.6, "opacity": 0.45 }
+}
+```
+
+On a map board the **map owns pan & zoom**, and a piece's `x`,`y` is its **`lng`,`lat`**
+— tokens pin to real coordinates and stay put as everyone moves the map. `setup`
+coordinates are therefore `lng`,`lat` too. The optional `grid` draws a lat/lng
+graticule overlay (`step` in degrees).
 
 ## Pieces
 
@@ -82,9 +104,17 @@ A preset layout loaded on demand from the menu. Coordinates are normalised `[0,1
 
 - Pick a **built-in** in the lobby (registered in `packs/index.json`).
 - **URL** — host a pack anywhere CORS-readable and paste its URL.
+- **GitHub via jsDelivr** — `gh:<org>/<repo>[@ver]/<path>` or just `<org>/<repo>/<path>`
+  resolves to `https://cdn.jsdelivr.net/gh/…`. (`npm:<pkg>/<path>` works too.)
 - **Paste JSON** — inline a whole pack; it's shared to the room verbatim over MQTT.
-- **Link** — `?game=<id-or-url>` on the invite URL preloads a pack.
+- **Link** — `?game=<id|url|org/repo/path>` on the invite URL preloads a pack.
+- **Clean path** — `/<org>/<repo>/<game>` after the app loads that pack from GitHub
+  via jsDelivr, e.g. `…/whitechapel/JustPlayBo/whitechapel/packs/chess.json`.
+  (Served on GitHub Pages through the SPA `404.html` redirect.)
+
+A pack referenced by any of these forms is shared to the room by its short ref, so it
+stays compact; pasted-JSON packs are shared in full.
 
 The room's current pack lives in the retained MQTT topic `lfw/<room>/game` as
-`{ "ref": "<url>" }` or `{ "def": { …whole pack… } }`, so late joiners get it
+`{ "ref": "<ref>" }` or `{ "def": { …whole pack… } }`, so late joiners get it
 automatically.

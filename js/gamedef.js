@@ -36,6 +36,25 @@
     catch (e) { return src; }
   }
 
+  // turn a short pack reference into a fetchable URL.
+  //   gh:org/repo[@ver]/path  |  org/repo/path  ->  jsDelivr CDN
+  //   npm:pkg[@ver]/path      ->  jsDelivr npm
+  //   packs/…, ./…, /…, http(s)://…, data:  ->  used as-is
+  function resolveRef(ref) {
+    if (!ref || typeof ref !== 'string') return ref;
+    if (/^(https?:|data:|blob:)/.test(ref)) return ref;
+    let m;
+    if ((m = ref.match(/^gh:(.+)$/))) return 'https://cdn.jsdelivr.net/gh/' + m[1];
+    if ((m = ref.match(/^npm:(.+)$/))) return 'https://cdn.jsdelivr.net/npm/' + m[1];
+    const segs = ref.split('/');
+    // bare "org/repo/path" (>=3 parts, not a local path) -> GitHub via jsDelivr
+    if (segs.length >= 3 && segs[0] && segs[0] !== 'packs'
+        && !ref.startsWith('.') && !ref.startsWith('/')) {
+      return 'https://cdn.jsdelivr.net/gh/' + ref;
+    }
+    return ref;                                               // local / relative
+  }
+
   /* ---- board background patterns (generated as inline SVG, so they scale) ---- */
   function svgUri(svg) { return 'data:image/svg+xml,' + encodeURIComponent(svg); }
 
@@ -106,14 +125,21 @@
       description: raw.description || '',
       board: {
         image: board.image ? resolveUrl(board.image, baseUrl) : null,
+        // a MapLibre style: a URL string (resolved) or an inline style object
+        map: board.map ? (typeof board.map === 'string' ? resolveUrl(board.map, baseUrl) : board.map) : null,
+        center: Array.isArray(board.center) ? board.center.map(Number) : null,
+        zoom: board.zoom != null ? num(board.zoom) : null,
+        grid: board.grid || null,               // graticule overlay for map boards
         pattern,
         color: board.color || '#140e09',
         aspect: aspect || null,                 // may still be null for raw images
         pieceSize: num(board.pieceSize) || DEFAULT_PIECE_SIZE,
       },
       pieces,
+      // coords are board-fraction [0,1] for image/pattern boards, or lng/lat for
+      // map boards — so we keep them raw rather than clamping.
       setup: (raw.setup || []).filter((s) => s && s.type).map((s) => ({
-        type: String(s.type), x: clamp01(s.x), y: clamp01(s.y),
+        type: String(s.type), x: num(s.x), y: num(s.y),
       })),
       source: { ref: null, raw },              // filled in by load()
     };
@@ -121,12 +147,12 @@
 
   /* ---- loaders ---- */
   async function loadRef(ref) {
-    const url = resolveUrl(ref, global.location.href);
+    const url = resolveUrl(resolveRef(ref), global.location.href);   // gh:/org/repo/… → CDN
     const res = await fetch(url, { cache: 'no-cache' });
     if (!res.ok) throw new Error('Could not fetch pack (' + res.status + '): ' + ref);
     const raw = await res.json();
     const def = normalize(raw, url);
-    def.source = { ref, raw };
+    def.source = { ref, raw };                                       // keep the short ref for sharing
     return def;
   }
 
@@ -204,6 +230,6 @@
   global.GameDef = {
     SCHEMA, DEFAULT_PIECE_SIZE,
     load, loadRef, loadInline, normalize,
-    key, toPayload, pieceMap, fallbackPiece, renderPiece, applyBoard, resolveUrl,
+    key, toPayload, pieceMap, fallbackPiece, renderPiece, applyBoard, resolveUrl, resolveRef,
   };
 })(window);

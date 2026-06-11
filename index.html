@@ -6,6 +6,17 @@
   <title>Whitechapel — Stay At Home</title>
   <link rel="icon" href="assets/markers/jack.png" />
   <link rel="stylesheet" href="css/styles.css" />
+  <!-- SPA path support: 404.html redirects /<base>/a/b/c -> /<base>/?/a/b/c, this restores it -->
+  <script>
+    (function (l) {
+      if (l.search[1] === '/') {
+        var decoded = l.search.slice(1).split('&').map(function (s) {
+          return s.replace(/~and~/g, '&');
+        }).join('?');
+        window.history.replaceState(null, null, l.pathname.slice(0, -1) + decoded + l.hash);
+      }
+    }(window.location));
+  </script>
 </head>
 <body>
 
@@ -97,6 +108,9 @@
         </div>
       </div>
 
+      <!-- MapLibre board lives here for map packs (hidden otherwise) -->
+      <div id="mapContainer" class="map-container hidden"></div>
+
       <!-- floating drop-to-delete zone -->
       <div id="trash" class="trash" title="Drag a marker here to remove it">🗑️</div>
 
@@ -149,6 +163,7 @@
   <script src="js/state.js"></script>
   <script src="js/net.js"></script>
   <script src="js/board.js"></script>
+  <script src="js/mapboard.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>
