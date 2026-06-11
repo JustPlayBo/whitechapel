@@ -1,33 +1,66 @@
-/* app.js — glue: lobby → identity → wire state + net + board, plus the chrome
- * (presence chips, connection light, menu, invite link, toast, save badge). */
+/* app.js — glue: lobby (name + room + game pack) → load def → wire state/net/board.
+ * The engine is generic: everything board-specific comes from a loadable pack. */
 (function () {
   'use strict';
 
   const $ = (id) => document.getElementById(id);
-  const Catalog = window.Catalog;
+  const Identity = window.Identity, GameDef = window.GameDef;
 
-  /* ---------------- lobby ---------------- */
+  // built-ins shown if packs/index.json can't be fetched (e.g. file://)
+  const FALLBACK_PACKS = [
+    { id: 'whitechapel', name: 'Whitechapel — Stay At Home', ref: 'packs/whitechapel.json' },
+    { id: 'chess', name: 'Chess — open table', ref: 'packs/chess.json' },
+    { id: 'go', name: 'Go — 19×19 goban', ref: 'packs/go.json' },
+  ];
+
   const lobby = $('lobby'), game = $('game');
   const nameInput = $('nameInput'), roomInput = $('roomInput');
+  const gameSelect = $('gameSelect'), gameChosen = $('gameChosen');
 
   const WORDS = ['baker', 'street', 'fog', 'gaslight', 'raven', 'hansom', 'whitechapel',
     'dorset', 'mitre', 'goulston', 'berner', 'buck', 'thames', 'cobble', 'lantern'];
-  function randomRoom() {
-    const a = WORDS[(Math.random() * WORDS.length) | 0];
-    const b = WORDS[(Math.random() * WORDS.length) | 0];
-    return `${a}-${b}-${(Math.random() * 90 + 10) | 0}`;
-  }
-  function slug(s) { return s.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, ''); }
+  const rnd = (n) => (Math.random() * n) | 0;
+  const randomRoom = () => `${WORDS[rnd(WORDS.length)]}-${WORDS[rnd(WORDS.length)]}-${rnd(90) + 10}`;
+  const slug = (s) => s.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
 
-  // prefill from URL + last session
   const params = new URLSearchParams(location.search);
+  let packs = FALLBACK_PACKS.slice();
+  let lobbyChoice = packs[0].ref;        // a ref string OR a {def} object
+
   roomInput.value = slug(params.get('room') || '') || randomRoom();
   nameInput.value = localStorage.getItem('lfw:name') || '';
 
+  /* ---------------- lobby setup ---------------- */
+  (async function initLobby() {
+    packs = await loadRegistry();
+    fillSelect(gameSelect, packs);
+
+    const wanted = params.get('game');
+    const choice = paramToChoice(wanted, packs);
+    if (choice) {
+      lobbyChoice = choice;
+      const hit = packs.find((p) => p.ref === choice);
+      if (hit) gameSelect.value = hit.ref; else showChosen(wanted);
+    } else {
+      lobbyChoice = gameSelect.value || packs[0].ref;
+    }
+  })();
+
+  gameSelect.onchange = () => { lobbyChoice = gameSelect.value; gameChosen.textContent = ''; };
+  $('gameCustomBtn').onclick = async () => {
+    const input = await openLoader();
+    if (!input) return;
+    try {
+      const def = await GameDef.load(input);
+      lobbyChoice = input;
+      showChosen(def.name);
+    } catch (e) { toast('Could not load pack: ' + e.message); }
+  };
+  function showChosen(name) { gameChosen.textContent = '▶ ' + name + ' (custom)'; }
+
   $('diceBtn').onclick = () => { roomInput.value = randomRoom(); };
   $('enterBtn').onclick = enter;
-  roomInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') enter(); });
-  nameInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') enter(); });
+  [roomInput, nameInput].forEach((el) => el.addEventListener('keydown', (e) => { if (e.key === 'Enter') enter(); }));
 
   function enter() {
     const name = (nameInput.value || '').trim() || 'Anon';
@@ -35,33 +68,54 @@
     localStorage.setItem('lfw:name', name);
     const url = new URL(location.href);
     url.searchParams.set('room', room);
+    if (typeof lobbyChoice === 'string') url.searchParams.set('game', lobbyChoice);
     history.replaceState(null, '', url);
-    startGame(room, name);
+    startGame(room, name, lobbyChoice);
   }
 
-  /* ---------------- game ---------------- */
-  function startGame(room, name) {
+  /* ---------------- registry / params ---------------- */
+  async function loadRegistry() {
+    try {
+      const r = await fetch('packs/index.json', { cache: 'no-cache' });
+      if (r.ok) { const j = await r.json(); if (j && j.packs && j.packs.length) return j.packs; }
+    } catch (e) { /* offline / file:// — use fallback */ }
+    return FALLBACK_PACKS.slice();
+  }
+  function paramToChoice(p) {
+    if (!p) return null;
+    const hit = packs.find((x) => x.id === p || x.ref === p);
+    return hit ? hit.ref : p;            // an id maps to its ref; otherwise treat as URL
+  }
+  function fillSelect(sel, list) {
+    sel.innerHTML = '';
+    list.forEach((p) => {
+      const o = document.createElement('option');
+      o.value = p.ref; o.textContent = p.name;
+      sel.appendChild(o);
+    });
+  }
+
+  /* ---------------- game session ---------------- */
+  async function startGame(room, name, choice) {
     lobby.classList.add('hidden');
     game.classList.remove('hidden');
 
     const id = 'c' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-    const identity = { id, name, color: Catalog.colorFor(id) };
-
+    const identity = { id, name, color: Identity.colorFor(id) };
     $('roomCode').textContent = room;
 
     const state = new window.BoardState(room);
     const board = new window.Board({
-      viewport: $('viewport'), stage: $('stage'), board: $('board'),
+      viewport: $('viewport'), stage: $('stage'), board: $('board'), boardImg: $('boardImg'),
       markers: $('markers'), cursors: $('cursors'), trash: $('trash'),
     }, {
-      onAdd:   (type, x, y) => { const m = state.add(type, x, y, name); net.publishMarker(m); },
-      onMove:  (mid, x, y) => { const m = state.move(mid, x, y, name); if (m) net.publishMarker(m); },
-      onLive:  (mid, x, y) => liveMove(mid, x, y),
-      onRemove:(mid) => { if (state.remove(mid)) net.deleteMarker(mid); },
-      onCursor:(x, y) => net.publishCursor(x, y),
+      onAdd: (type, x, y) => { const m = state.add(type, x, y, name); net.publishMarker(m); },
+      onMove: (mid, x, y) => { const m = state.move(mid, x, y, name); if (m) net.publishMarker(m); },
+      onLive: (mid, x, y) => liveMove(mid, x, y),
+      onRemove: (mid) => { if (state.remove(mid)) net.deleteMarker(mid); },
+      onCursor: (x, y) => net.publishCursor(x, y),
     });
 
-    // live drag: broadcast without thrashing localStorage each frame
     let liveTimer = 0;
     function liveMove(mid, x, y) {
       const m = state.get(mid); if (!m) return;
@@ -71,7 +125,6 @@
       net.publishMarker({ id: mid, type: m.type, x, y, t: now, by: name });
     }
 
-    // state → board rendering
     state.onChange((kind, m) => {
       if (kind === 'saved') { flashSave(); return; }
       if (kind === 'clear') { board.renderAll([]); return; }
@@ -79,38 +132,66 @@
       if (m) board.upsert(m);
     });
 
-    // presence registry (includes self)
+    /* ---- the game pack the room is running ---- */
+    let currentDef = null;
+    let roomGameKnown = false;
+
+    function applyGame(def) {
+      currentDef = def;
+      board.setDef(def);
+      buildTray(def, board);
+      $('gameName').textContent = def.name;
+      board.renderAll(state.all());
+      board.fit();
+    }
+    async function loadAndApply(input, opts) {
+      const def = await GameDef.load(input);
+      applyGame(def);
+      if (opts && opts.publish) { net.publishGame(GameDef.toPayload(def)); roomGameKnown = true; }
+      return def;
+    }
+
+    // load the chosen pack (fall back to the first built-in on failure)
+    try { await loadAndApply(choice); }
+    catch (e) { toast('Pack failed (' + e.message + ') — using default'); await loadAndApply(FALLBACK_PACKS[0].ref); }
+
     const players = new Map();
     players.set(id, { name, color: identity.color, self: true });
-    renderPresence();
 
     const net = new window.Net(room, identity, {
       onStatus: setStatus,
+      onGame: (payload) => onRoomGame(payload),
       onMarker: (m) => { if (!board.isDragging(m.id)) state.applyRemote(m); },
       onMarkerDelete: (mid) => state.applyRemoteDelete(mid),
-      onPresence: (cid, info) => {
-        if (info) players.set(cid, info); else { players.delete(cid); board.dropCursor(cid); }
-        renderPresence();
-      },
+      onPresence: (cid, info) => { if (info) players.set(cid, info); else { players.delete(cid); board.dropCursor(cid); } renderPresence(); },
       onCursor: (cid, c) => board.showCursor(cid, c),
       onSyncRequest: (from) => { if (state.all().length) net.sendFull(from, state.all()); },
       onSyncFull: (markers) => markers.forEach((m) => state.applyRemote(m)),
     });
 
-    // first paint from localStorage, then go online
-    board.renderAll(state.all());
-    board.fit();
-    net.connect();
+    // adopt the room's game if it differs from ours; otherwise just note it's set
+    async function onRoomGame(payload) {
+      const incomingKey = payload.ref ? 'ref:' + payload.ref : (payload.def ? 'id:' + (payload.def.id || 'untitled') : '');
+      roomGameKnown = true;
+      if (incomingKey && incomingKey !== GameDef.key(currentDef)) {
+        try { await loadAndApply(payload); toast('Now playing: ' + currentDef.name); }
+        catch (e) { toast('Room sent a pack that failed to load'); }
+      }
+    }
 
-    buildTray(board);
-    wireMenu(state, net, board, room);
+    renderPresence();
+    net.connect();
+    // if nobody has claimed a game for this room yet, publish ours
+    setTimeout(() => {
+      if (!roomGameKnown && currentDef) { net.publishGame(GameDef.toPayload(currentDef)); roomGameKnown = true; }
+    }, 900);
+
+    buildTray(currentDef, board);
+    wireMenu(state, net, board, room, () => currentDef, loadAndApply);
     window.addEventListener('resize', () => board.fit());
     window.addEventListener('beforeunload', () => net.leave());
+    window.__lfw = { state, net, board, players, identity, get def() { return currentDef; } };
 
-    // expose for debugging
-    window.__lfw = { state, net, board, players, identity };
-
-    /* ---- presence chips ---- */
     function renderPresence() {
       const wrap = $('presence');
       wrap.innerHTML = '';
@@ -130,36 +211,43 @@
     }
   }
 
-  /* ---------------- tray ---------------- */
-  function buildTray(board) {
+  /* ---------------- tray (built from the def's pieces) ---------------- */
+  function buildTray(def, board) {
     const wrap = $('trayItems');
     wrap.innerHTML = '';
-    Catalog.TRAY_ORDER.forEach((type) => {
-      const meta = Catalog.MARKERS[type];
+    def.pieces.forEach((piece) => {
       const item = document.createElement('button');
       item.className = 'tray-item';
-      item.title = 'Drag onto board: ' + meta.label;
-      item.innerHTML = `<img src="${meta.img}" alt="${meta.label}" draggable="false"><span>${meta.label}</span>`;
-      item.addEventListener('pointerdown', (e) => {
-        e.preventDefault();
-        board.startCreate(type, e);
-      });
+      item.title = 'Drag onto board: ' + piece.label;
+      const preview = GameDef.renderPiece(piece);
+      preview.classList.add('tray-preview');
+      preview.style.setProperty('--sz', '38px');
+      const span = document.createElement('span');
+      span.textContent = piece.label;
+      item.appendChild(preview); item.appendChild(span);
+      item.addEventListener('pointerdown', (e) => { e.preventDefault(); board.startCreate(piece.type, e); });
       wrap.appendChild(item);
     });
   }
 
   /* ---------------- menu ---------------- */
-  function wireMenu(state, net, board, room) {
+  function wireMenu(state, net, board, room, getDef, loadAndApply) {
     const menu = $('menu'), btn = $('menuBtn');
     btn.onclick = (e) => { e.stopPropagation(); menu.classList.toggle('hidden'); };
     document.addEventListener('click', () => menu.classList.add('hidden'));
 
-    menu.addEventListener('click', (e) => {
+    menu.addEventListener('click', async (e) => {
       const act = e.target.dataset.act;
       if (!act) return;
       menu.classList.add('hidden');
       if (act === 'recenter') board.fit();
-      if (act === 'seed') seed(state, net);
+      if (act === 'seed') seed(state, net, getDef());
+      if (act === 'change') {
+        const input = await openLoader();
+        if (!input) return;
+        try { await loadAndApply(input, { publish: true }); toast('Now playing: ' + getDef().name); }
+        catch (err) { toast('Could not load pack: ' + err.message); }
+      }
       if (act === 'clear') {
         if (!confirm('Remove every marker for everyone in this room?')) return;
         state.all().forEach((m) => net.deleteMarker(m.id));
@@ -172,45 +260,66 @@
     $('copyLinkBtn').onclick = async () => {
       const url = new URL(location.href);
       url.searchParams.set('room', room);
+      const def = getDef();
+      if (def && def.source && def.source.ref) url.searchParams.set('game', def.source.ref);
+      else url.searchParams.delete('game');     // inline custom packs sync via MQTT, not the link
       try { await navigator.clipboard.writeText(url.toString()); toast('Invite link copied'); }
       catch (e) { prompt('Copy this invite link:', url.toString()); }
     };
   }
 
-  function seed(state, net) {
-    const data = window.SAMPLE_LAYOUT;
-    if (!data || !data.markers) { toast('No sample layout found'); return; }
-    data.markers.forEach((s) => {
-      const m = state.add(s.type, s.x, s.y, 'sample');
-      net.publishMarker(m);
-    });
-    toast('Loaded sample layout (' + data.markers.length + ' pieces)');
+  function seed(state, net, def) {
+    if (!def || !def.setup || !def.setup.length) { toast('This pack has no sample layout'); return; }
+    def.setup.forEach((s) => { const m = state.add(s.type, s.x, s.y, 'sample'); net.publishMarker(m); });
+    toast('Loaded sample layout (' + def.setup.length + ' pieces)');
   }
 
-  /* ---------------- status light ---------------- */
+  /* ---------------- pack loader modal ---------------- */
+  function openLoader() {
+    return new Promise((resolve) => {
+      const modal = $('gameModal'), sel = $('modalSelect');
+      const urlIn = $('modalUrl'), jsonIn = $('modalJson');
+      fillSelect(sel, packs);
+      urlIn.value = ''; jsonIn.value = '';
+      modal.classList.remove('hidden');
+
+      const close = (val) => { modal.classList.add('hidden'); cleanup(); resolve(val); };
+      const onLoad = () => {
+        const json = jsonIn.value.trim(), url = urlIn.value.trim();
+        if (json) { try { close({ def: JSON.parse(json) }); } catch (e) { toast('Invalid JSON'); } return; }
+        if (url) return close(url);
+        if (sel.value) return close(sel.value);
+        close(null);
+      };
+      const onCancel = () => close(null);
+      const onBackdrop = (e) => { if (e.target === modal) close(null); };
+      function cleanup() {
+        $('modalLoad').removeEventListener('click', onLoad);
+        $('modalCancel').removeEventListener('click', onCancel);
+        modal.removeEventListener('click', onBackdrop);
+      }
+      $('modalLoad').addEventListener('click', onLoad);
+      $('modalCancel').addEventListener('click', onCancel);
+      modal.addEventListener('click', onBackdrop);
+    });
+  }
+
+  /* ---------------- status / toast / save ---------------- */
   function setStatus(s) {
     const dot = $('connDot');
-    const map = {
-      online: ['on', 'Connected — live'],
-      reconnecting: ['warn', 'Reconnecting…'],
-      offline: ['off', 'Offline'],
-      error: ['off', 'Connection error'],
-    };
+    const map = { online: ['on', 'Connected — live'], reconnecting: ['warn', 'Reconnecting…'], offline: ['off', 'Offline'], error: ['off', 'Connection error'] };
     const [cls, tip] = map[s] || ['off', s];
-    dot.className = 'conn-dot ' + cls;
-    dot.title = tip;
+    dot.className = 'conn-dot ' + cls; dot.title = tip;
     if (s === 'online') toast('Connected to room');
     if (s === 'offline') toast('Disconnected — retrying…');
   }
 
-  /* ---------------- toast + save badge ---------------- */
   let toastTimer = 0;
   function toast(msg) {
     const el = $('toast');
-    el.textContent = msg;
-    el.classList.remove('hidden');
+    el.textContent = msg; el.classList.remove('hidden');
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => el.classList.add('hidden'), 2200);
+    toastTimer = setTimeout(() => el.classList.add('hidden'), 2400);
   }
 
   let saveTimer = 0;

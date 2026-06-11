@@ -38,6 +38,15 @@
         </div>
       </label>
 
+      <label class="field">
+        <span>Game pack</span>
+        <div class="room-row">
+          <select id="gameSelect" class="select"></select>
+          <button id="gameCustomBtn" type="button" class="ghost-btn" title="Load a custom pack (URL or JSON)">＋</button>
+        </div>
+        <small id="gameChosen" class="chosen-note"></small>
+      </label>
+
       <button id="enterBtn" type="button" class="primary-btn">Enter the room</button>
 
       <p class="lobby-foot">
@@ -52,7 +61,8 @@
     <header class="topbar">
       <div class="topbar-left">
         <img src="assets/markers/jack.png" alt="" class="topbar-mark" />
-        <strong class="topbar-title">Whitechapel</strong>
+        <strong class="topbar-title">JustPlay</strong>
+        <span id="gameName" class="game-name">—</span>
       </div>
 
       <div class="topbar-room">
@@ -68,6 +78,7 @@
       </div>
 
       <div id="menu" class="menu hidden">
+        <button data-act="change" class="menu-item">Change game…</button>
         <button data-act="seed" class="menu-item">Load sample layout</button>
         <button data-act="clear" class="menu-item danger">Clear the board</button>
         <button data-act="recenter" class="menu-item">Re&#8209;centre / fit</button>
@@ -79,7 +90,7 @@
       <div id="viewport" class="viewport">
         <div id="stage" class="stage">
           <div id="board" class="board">
-            <img id="boardImg" class="board-img" src="assets/board.jpg" alt="Whitechapel map" draggable="false" />
+            <img id="boardImg" class="board-img" alt="game board" draggable="false" />
             <div id="markers" class="markers"></div>
             <div id="cursors" class="cursors"></div>
           </div>
@@ -103,9 +114,38 @@
   <!-- toast -->
   <div id="toast" class="toast hidden"></div>
 
+  <!-- ============ pack loader modal ============ -->
+  <div id="gameModal" class="modal hidden">
+    <div class="modal-card">
+      <h2>Load a game pack</h2>
+      <p class="modal-sub">A pack is JSON describing a board and its pieces. Pick a built-in,
+        point at a URL, or paste your own — everyone in the room will switch to it.</p>
+
+      <label class="field">
+        <span>Built-in</span>
+        <select id="modalSelect" class="select"></select>
+      </label>
+
+      <label class="field">
+        <span>…or pack URL</span>
+        <input id="modalUrl" type="text" placeholder="https://…/my-game.json" autocomplete="off" />
+      </label>
+
+      <label class="field">
+        <span>…or paste JSON</span>
+        <textarea id="modalJson" rows="6" placeholder='{ "name": "My game", "board": {…}, "pieces": [ … ] }'></textarea>
+      </label>
+
+      <div class="modal-actions">
+        <button id="modalCancel" type="button" class="ghost-btn">Cancel</button>
+        <button id="modalLoad" type="button" class="primary-btn compact">Load</button>
+      </div>
+    </div>
+  </div>
+
   <script src="lib/mqtt.min.js"></script>
-  <script src="js/catalog.js"></script>
-  <script src="js/layout.js"></script>
+  <script src="js/identity.js"></script>
+  <script src="js/gamedef.js"></script>
   <script src="js/state.js"></script>
   <script src="js/net.js"></script>
   <script src="js/board.js"></script>

@@ -1,23 +1,35 @@
-# Whitechapel — Stay At Home
+# JustPlay — a shared-board engine
 
-A tiny **shared game board** built from the artwork inside `LFW_StayAtHome.pptx`
-(the "Letters from Whitechapel" #StayAtHome print-and-play). Players join a room,
-drag pieces onto the Whitechapel map, and every move is seen live by everyone else.
+A tiny **engine for real-time shared tabletops**. Players join a room, drag pieces
+around a board, and every move is seen live by everyone else. There are deliberately
+**no rules** — it's a synced table. Move the pieces however your house rules demand.
 
-There are deliberately **no rules** — it's a synced table. Move the markers however
-your house rules demand.
+The board and its pieces aren't hard-coded — they're described by an **abstract JSON
+"game pack"** that's loaded and run. Swap the pack and you've got a different game;
+the engine is the same. It ships with three packs:
 
-![pieces: Jack, carriage, lamppost, constables, discs]
+| Pack | Board | Pieces |
+| ---- | ----- | ------ |
+| **Whitechapel — Stay At Home** | the `LFW_StayAtHome.pptx` map (image) | Jack, carriage, lamppost, constables, discs (images) |
+| **Chess — open table** | generated checkerboard | the 12 chess pieces (unicode glyphs) |
+| **Go — 19×19 goban** | generated grid | black & white stones |
+
+…and anyone can load their own pack by URL or by pasting JSON. A complete pack can
+be authored with **zero binary assets** (pattern board + glyph pieces).
+
+→ Pack format: [`packs/SCHEMA.md`](packs/SCHEMA.md)
 
 ## What it does
 
 - **Easy setup** — one static page, no build step, no server of your own.
-- **Loads the resources** from the pptx: the map becomes the board, the ten tokens
-  (Jack, the carriage, the lamppost, four constable helmets, three discs) become a
-  drag-out tray. *Load sample layout* drops them where the original slide had them.
+- **Loads resources from a pack** — the board image (or generated pattern) and the
+  piece tray come straight from the JSON. *Load sample layout* drops pieces into the
+  pack's preset (e.g. the chess opening, or the original Whitechapel slide positions).
 - **Shared rooms** — pick/scan a room code, share the invite link, and anyone who
-  opens it lands on the same board.
-- **Markers managed by all** — drag from the tray to add, drag a piece to move,
+  opens it lands on the same board running the same pack.
+- **The whole room shares one game** — change the pack and everyone switches; the
+  choice is a retained MQTT message so late joiners get it automatically.
+- **Pieces managed by all** — drag from the tray to add, drag a piece to move,
   drag to the 🗑️ (or right-click) to remove. Live cursors show where others point.
 - **Persisted locally** — every player mirrors the whole board into their browser's
   `localStorage`, so a refresh or a dropped connection keeps the table intact and
@@ -78,11 +90,15 @@ Topics, all under `lfw/<room>/`:
 
 | Topic                 | Retained | Meaning                                   |
 | --------------------- | :------: | ----------------------------------------- |
+| `game`                |   yes    | the pack the room runs: `{ref}` or `{def}` |
 | `m/<markerId>`        |   yes    | a marker `{type,x,y,t,by}`; empty = removed |
 | `presence/<clientId>` |   yes    | `{name,color}`; empty (or LWT) = left     |
 | `cursor/<clientId>`   |    no    | live pointer position, throttled          |
 | `sync/req` `sync/full`|    no    | a joiner asks; peers answer with the board |
 
+- The **`game`** topic is how the whole room agrees on one pack: the first player to
+  arrive publishes it (retained); anyone using *Change game…* republishes it and
+  everyone adopts it. Late joiners read it on subscribe.
 - Marker positions are **normalised `[0,1]`** coordinates, so every screen size and
   zoom level agrees on where a piece sits.
 - **Retained** marker messages mean a late joiner gets the current board replayed the
@@ -96,25 +112,48 @@ Topics, all under `lfw/<room>/`:
 ## Project layout
 
 ```
-index.html            markup + shells (lobby / game)
-css/styles.css         Victorian-sepia theme
-js/catalog.js          the 10 pieces + player colours
-js/layout.js           sample arrangement lifted from the pptx slide
-js/state.js            board model + localStorage persistence (last-writer-wins)
-js/net.js              MQTT transport (HiveMQ over WebSockets)
-js/board.js            rendering, pan/zoom, drag, cursors
-js/app.js              glue: lobby, presence, menu, toasts
-lib/mqtt.min.js        vendored MQTT.js v5 (no CDN needed)
-assets/board.jpg       the map (pptx image11)
-assets/markers/*.png   the tokens (pptx image1–10)
+index.html             markup + shells (lobby / game / pack-loader modal)
+css/styles.css          theme + glyph-piece / pattern-board styles
+js/gamedef.js           the abstraction: load/normalise a pack, render board & pieces
+js/identity.js          per-player colour
+js/state.js             board model + localStorage persistence (last-writer-wins)
+js/net.js               MQTT transport (HiveMQ over WebSockets), incl. the `game` topic
+js/board.js             rendering, pan/zoom, drag, cursors — all driven by the def
+js/app.js               glue: lobby, pack picker, presence, menu, toasts
+lib/mqtt.min.js         vendored MQTT.js v5 (no CDN needed)
+packs/index.json        registry of built-in packs (lobby dropdown)
+packs/*.json            the game packs
+packs/SCHEMA.md         pack format reference
+assets/board.jpg        Whitechapel map (pptx image11)
+assets/markers/*.png    Whitechapel tokens (pptx image1–10)
 ```
 
 ## Controls
 
 | Action            | How                                         |
 | ----------------- | ------------------------------------------- |
+| Pick / change game| lobby dropdown, or **Menu ▾ → Change game…** |
 | Add a piece       | drag it from the bottom tray onto the board |
 | Move a piece      | drag it                                      |
 | Remove a piece    | drag to the 🗑️ corner, or right-click it    |
-| Pan / zoom        | drag empty map / mouse-wheel (pinch on touch) |
+| Pan / zoom        | drag empty board / mouse-wheel (pinch on touch) |
 | Re-centre, clear, sample layout, leave | **Menu ▾**            |
+
+## Make your own game
+
+Author a pack (see [`packs/SCHEMA.md`](packs/SCHEMA.md)) — here's a complete,
+asset-free one:
+
+```json
+{
+  "name": "Tic-tac-toe",
+  "board": { "pattern": { "type": "grid", "cols": 3, "rows": 3, "line": "#333", "bg": "#f3ead6" }, "aspect": 1 },
+  "pieces": [
+    { "type": "x", "label": "X", "glyph": "✕", "color": "#c0392b" },
+    { "type": "o", "label": "O", "glyph": "◯", "color": "#2c3e50" }
+  ]
+}
+```
+
+Load it in the room via **Menu ▾ → Change game… → paste JSON**, and everyone switches
+to it instantly.

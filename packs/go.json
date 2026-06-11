@@ -1,0 +1,73 @@
+{
+  "schema": "boardgame/1",
+  "id": "go",
+  "name": "Go \u2014 19\u00d719 goban",
+  "description": "A 19\u00d719 goban with black and white stones. Place stones anywhere; no capture rules.",
+  "board": {
+    "pattern": {
+      "type": "grid",
+      "cols": 19,
+      "rows": 19,
+      "line": "#2b1d0f",
+      "bg": "#dcb35e",
+      "stars": [
+        [
+          3,
+          3
+        ],
+        [
+          9,
+          3
+        ],
+        [
+          15,
+          3
+        ],
+        [
+          3,
+          9
+        ],
+        [
+          9,
+          9
+        ],
+        [
+          15,
+          9
+        ],
+        [
+          3,
+          15
+        ],
+        [
+          9,
+          15
+        ],
+        [
+          15,
+          15
+        ]
+      ]
+    },
+    "aspect": 1.0,
+    "color": "#3a2a18",
+    "pieceSize": 0.048
+  },
+  "pieces": [
+    {
+      "type": "b",
+      "label": "Black stone",
+      "glyph": "",
+      "bg": "#141414",
+      "color": "#141414"
+    },
+    {
+      "type": "w",
+      "label": "White stone",
+      "glyph": "",
+      "bg": "#f4f1ea",
+      "color": "#f4f1ea"
+    }
+  ],
+  "setup": []
+}

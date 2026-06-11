@@ -1,0 +1,19 @@
+{
+  "packs": [
+    {
+      "id": "whitechapel",
+      "name": "Whitechapel \u2014 Stay At Home",
+      "ref": "packs/whitechapel.json"
+    },
+    {
+      "id": "chess",
+      "name": "Chess \u2014 open table",
+      "ref": "packs/chess.json"
+    },
+    {
+      "id": "go",
+      "name": "Go \u2014 19\u00d719 goban",
+      "ref": "packs/go.json"
+    }
+  ]
+}

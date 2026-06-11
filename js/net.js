@@ -1,6 +1,7 @@
 /* net.js — the shared-room transport over MQTT (public HiveMQ broker).
  *
  * Topic map, all under  lfw/<room>/ :
+ *   game                  retained  the game pack the room is running: {ref} or {def}
  *   m/<markerId>          retained  marker JSON, or empty payload = deleted
  *   presence/<clientId>   retained  {name,color,t}, or empty = left (also the LWT)
  *   cursor/<clientId>     volatile  {x,y} live pointer, throttled
@@ -67,6 +68,11 @@
       const rest = topic.slice(this.base.length + 1);
       const text = payload.toString();
 
+      if (rest === 'game') {
+        const g = safe(text);
+        if (g) this.h.onGame && this.h.onGame(g);
+        return;
+      }
       if (rest.startsWith('m/')) {
         const id = rest.slice(2);
         if (!text) { this.h.onMarkerDelete && this.h.onMarkerDelete(id); return; }
@@ -103,6 +109,8 @@
       const payload = obj == null ? '' : JSON.stringify(obj);
       this.client.publish(this.topic(suffix), payload, opts || { qos: 0 });
     }
+
+    publishGame(payload) { this._pub('game', payload, { qos: 0, retain: true }); }
 
     publishMarker(m) {
       this._pub(`m/${m.id}`, { type: m.type, x: m.x, y: m.y, t: m.t, by: m.by },

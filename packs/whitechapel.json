@@ -1,0 +1,206 @@
+{
+  "schema": "boardgame/1",
+  "id": "whitechapel",
+  "name": "Whitechapel \u2014 Stay At Home",
+  "description": "The #StayAtHome print-and-play map and its tokens, as a shared table.",
+  "board": {
+    "image": "../assets/board.jpg",
+    "aspect": 1.6,
+    "color": "#140e09",
+    "pieceSize": 0.027
+  },
+  "pieces": [
+    {
+      "type": "jack",
+      "label": "Jack",
+      "image": "../assets/markers/jack.png"
+    },
+    {
+      "type": "carriage",
+      "label": "Carriage",
+      "image": "../assets/markers/carriage.png"
+    },
+    {
+      "type": "lamp",
+      "label": "Lamppost",
+      "image": "../assets/markers/lamp.png"
+    },
+    {
+      "type": "cop-green",
+      "label": "Constable \u00b7 Green",
+      "image": "../assets/markers/cop-green.png"
+    },
+    {
+      "type": "cop-yellow",
+      "label": "Constable \u00b7 Yellow",
+      "image": "../assets/markers/cop-yellow.png"
+    },
+    {
+      "type": "cop-teal",
+      "label": "Constable \u00b7 Teal",
+      "image": "../assets/markers/cop-teal.png"
+    },
+    {
+      "type": "cop-brown",
+      "label": "Constable \u00b7 Brown",
+      "image": "../assets/markers/cop-brown.png"
+    },
+    {
+      "type": "disc-red",
+      "label": "Disc \u00b7 Red",
+      "image": "../assets/markers/disc-red.png"
+    },
+    {
+      "type": "disc-yellow",
+      "label": "Disc \u00b7 Yellow",
+      "image": "../assets/markers/disc-yellow.png"
+    },
+    {
+      "type": "disc-grey",
+      "label": "Disc \u00b7 Grey",
+      "image": "../assets/markers/disc-grey.png"
+    }
+  ],
+  "setup": [
+    {
+      "type": "disc-yellow",
+      "x": 0.0396,
+      "y": 0.0679
+    },
+    {
+      "type": "disc-red",
+      "x": 0.0823,
+      "y": 0.1278
+    },
+    {
+      "type": "carriage",
+      "x": 0.0353,
+      "y": 0.9554
+    },
+    {
+      "type": "jack",
+      "x": 0.0256,
+      "y": 0.8573
+    },
+    {
+      "type": "jack",
+      "x": 0.9707,
+      "y": 0.7099
+    },
+    {
+      "type": "cop-teal",
+      "x": 0.4608,
+      "y": 0.5316
+    },
+    {
+      "type": "cop-yellow",
+      "x": 0.3041,
+      "y": 0.5316
+    },
+    {
+      "type": "cop-brown",
+      "x": 0.4181,
+      "y": 0.24
+    },
+    {
+      "type": "lamp",
+      "x": 0.2695,
+      "y": 0.429
+    },
+    {
+      "type": "cop-green",
+      "x": 0.3193,
+      "y": 0.46
+    },
+    {
+      "type": "disc-grey",
+      "x": 0.0327,
+      "y": 0.9064
+    },
+    {
+      "type": "disc-red",
+      "x": 0.0844,
+      "y": 0.1795
+    },
+    {
+      "type": "disc-red",
+      "x": 0.0844,
+      "y": 0.2311
+    },
+    {
+      "type": "disc-red",
+      "x": 0.0823,
+      "y": 0.3717
+    },
+    {
+      "type": "disc-yellow",
+      "x": 0.0396,
+      "y": 0.1079
+    },
+    {
+      "type": "disc-yellow",
+      "x": 0.0396,
+      "y": 0.1479
+    },
+    {
+      "type": "disc-yellow",
+      "x": 0.2788,
+      "y": 0.48
+    },
+    {
+      "type": "disc-yellow",
+      "x": 0.0353,
+      "y": 0.2505
+    },
+    {
+      "type": "disc-yellow",
+      "x": 0.0256,
+      "y": 0.3397
+    },
+    {
+      "type": "disc-yellow",
+      "x": 0.0506,
+      "y": 0.2997
+    },
+    {
+      "type": "disc-yellow",
+      "x": 0.2788,
+      "y": 0.5704
+    },
+    {
+      "type": "disc-yellow",
+      "x": 0.5,
+      "y": 0.5
+    },
+    {
+      "type": "disc-yellow",
+      "x": 0.0256,
+      "y": 0.429
+    },
+    {
+      "type": "disc-yellow",
+      "x": 0.3771,
+      "y": 0.5971
+    },
+    {
+      "type": "disc-grey",
+      "x": 0.0327,
+      "y": 0.9064
+    },
+    {
+      "type": "carriage",
+      "x": 0.0353,
+      "y": 0.9591
+    },
+    {
+      "type": "carriage",
+      "x": 0.0327,
+      "y": 0.9591
+    },
+    {
+      "type": "disc-red",
+      "x": 0.3707,
+      "y": 0.0573
+    }
+  ]
+}

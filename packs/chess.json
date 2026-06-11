@@ -1,0 +1,254 @@
+{
+  "schema": "boardgame/1",
+  "id": "chess",
+  "name": "Chess \u2014 open table",
+  "description": "A checkerboard and the 12 chess pieces as unicode glyphs. No rules enforced \u2014 move freely.",
+  "board": {
+    "pattern": {
+      "type": "checker",
+      "cols": 8,
+      "rows": 8,
+      "light": "#e9d4ab",
+      "dark": "#9a6a3c"
+    },
+    "aspect": 1.0,
+    "color": "#1a130c",
+    "pieceSize": 0.1
+  },
+  "pieces": [
+    {
+      "type": "wk",
+      "label": "White King",
+      "glyph": "\u265a",
+      "color": "#f6f2e7"
+    },
+    {
+      "type": "wq",
+      "label": "White Queen",
+      "glyph": "\u265b",
+      "color": "#f6f2e7"
+    },
+    {
+      "type": "wr",
+      "label": "White Rook",
+      "glyph": "\u265c",
+      "color": "#f6f2e7"
+    },
+    {
+      "type": "wb",
+      "label": "White Bishop",
+      "glyph": "\u265d",
+      "color": "#f6f2e7"
+    },
+    {
+      "type": "wn",
+      "label": "White Knight",
+      "glyph": "\u265e",
+      "color": "#f6f2e7"
+    },
+    {
+      "type": "wp",
+      "label": "White Pawn",
+      "glyph": "\u265f",
+      "color": "#f6f2e7"
+    },
+    {
+      "type": "bk",
+      "label": "Black King",
+      "glyph": "\u265a",
+      "color": "#22201c"
+    },
+    {
+      "type": "bq",
+      "label": "Black Queen",
+      "glyph": "\u265b",
+      "color": "#22201c"
+    },
+    {
+      "type": "br",
+      "label": "Black Rook",
+      "glyph": "\u265c",
+      "color": "#22201c"
+    },
+    {
+      "type": "bb",
+      "label": "Black Bishop",
+      "glyph": "\u265d",
+      "color": "#22201c"
+    },
+    {
+      "type": "bn",
+      "label": "Black Knight",
+      "glyph": "\u265e",
+      "color": "#22201c"
+    },
+    {
+      "type": "bp",
+      "label": "Black Pawn",
+      "glyph": "\u265f",
+      "color": "#22201c"
+    }
+  ],
+  "setup": [
+    {
+      "type": "br",
+      "x": 0.0625,
+      "y": 0.0625
+    },
+    {
+      "type": "bp",
+      "x": 0.0625,
+      "y": 0.1875
+    },
+    {
+      "type": "wp",
+      "x": 0.0625,
+      "y": 0.8125
+    },
+    {
+      "type": "wr",
+      "x": 0.0625,
+      "y": 0.9375
+    },
+    {
+      "type": "bn",
+      "x": 0.1875,
+      "y": 0.0625
+    },
+    {
+      "type": "bp",
+      "x": 0.1875,
+      "y": 0.1875
+    },
+    {
+      "type": "wp",
+      "x": 0.1875,
+      "y": 0.8125
+    },
+    {
+      "type": "wn",
+      "x": 0.1875,
+      "y": 0.9375
+    },
+    {
+      "type": "bb",
+      "x": 0.3125,
+      "y": 0.0625
+    },
+    {
+      "type": "bp",
+      "x": 0.3125,
+      "y": 0.1875
+    },
+    {
+      "type": "wp",
+      "x": 0.3125,
+      "y": 0.8125
+    },
+    {
+      "type": "wb",
+      "x": 0.3125,
+      "y": 0.9375
+    },
+    {
+      "type": "bq",
+      "x": 0.4375,
+      "y": 0.0625
+    },
+    {
+      "type": "bp",
+      "x": 0.4375,
+      "y": 0.1875
+    },
+    {
+      "type": "wp",
+      "x": 0.4375,
+      "y": 0.8125
+    },
+    {
+      "type": "wq",
+      "x": 0.4375,
+      "y": 0.9375
+    },
+    {
+      "type": "bk",
+      "x": 0.5625,
+      "y": 0.0625
+    },
+    {
+      "type": "bp",
+      "x": 0.5625,
+      "y": 0.1875
+    },
+    {
+      "type": "wp",
+      "x": 0.5625,
+      "y": 0.8125
+    },
+    {
+      "type": "wk",
+      "x": 0.5625,
+      "y": 0.9375
+    },
+    {
+      "type": "bb",
+      "x": 0.6875,
+      "y": 0.0625
+    },
+    {
+      "type": "bp",
+      "x": 0.6875,
+      "y": 0.1875
+    },
+    {
+      "type": "wp",
+      "x": 0.6875,
+      "y": 0.8125
+    },
+    {
+      "type": "wb",
+      "x": 0.6875,
+      "y": 0.9375
+    },
+    {
+      "type": "bn",
+      "x": 0.8125,
+      "y": 0.0625
+    },
+    {
+      "type": "bp",
+      "x": 0.8125,
+      "y": 0.1875
+    },
+    {
+      "type": "wp",
+      "x": 0.8125,
+      "y": 0.8125
+    },
+    {
+      "type": "wn",
+      "x": 0.8125,
+      "y": 0.9375
+    },
+    {
+      "type": "br",
+      "x": 0.9375,
+      "y": 0.0625
+    },
+    {
+      "type": "bp",
+      "x": 0.9375,
+      "y": 0.1875
+    },
+    {
+      "type": "wp",
+      "x": 0.9375,
+      "y": 0.8125
+    },
+    {
+      "type": "wr",
+      "x": 0.9375,
+      "y": 0.9375
+    }
+  ]
+}
