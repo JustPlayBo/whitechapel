@@ -68,6 +68,7 @@
       if (!this.map) {
         this.viewport.classList.add('hidden');
         this.mapEl.classList.remove('hidden');
+        void this.mapEl.offsetHeight;       // force layout so the map reads a real size at init
         this.map = new global.maplibregl.Map({
           container: this.mapEl, style,
           center: def.board.center || [0, 20],
@@ -75,13 +76,24 @@
           attributionControl: true,
         });
         this.map.addControl(new global.maplibregl.NavigationControl({ showCompass: false }), 'top-left');
-        this.map.on('load', () => { this._ready = true; this._addGrid(); this._sync(); this._wireCursor(); });
+        this.map.on('load', () => { this._ready = true; this._addGrid(); this._sync(); this._wireCursor(); this.map.resize(); });
         this.map.on('styledata', () => { if (this._ready) this._addGrid(); });
+        this._observeSize();                // keep the canvas matched to the container
       } else {
         this.map.setStyle(style);
         if (def.board.center) this.map.setCenter(def.board.center);
         if (def.board.zoom != null) this.map.setZoom(def.board.zoom);
       }
+    }
+
+    // MapLibre sizes its canvas once at init; if the container gets its real
+    // size a frame later (lazy load behind awaits), the map can stick at 0px.
+    // A ResizeObserver + a couple of rAF resizes keeps the canvas correct.
+    _observeSize() {
+      const resize = () => { if (this.map) this.map.resize(); };
+      if (global.ResizeObserver) { this._ro = new global.ResizeObserver(resize); this._ro.observe(this.mapEl); }
+      requestAnimationFrame(resize);
+      requestAnimationFrame(() => requestAnimationFrame(resize));
     }
 
     _addGrid() {
@@ -224,6 +236,7 @@
     fit() { if (this.map) this.map.resize(); }
 
     dispose() {
+      if (this._ro) { this._ro.disconnect(); this._ro = null; }
       this._cursors.forEach((e) => { clearTimeout(e.timer); e.mk.remove(); });
       this._cursors.clear();
       this._markers.forEach((mk) => mk.remove());
