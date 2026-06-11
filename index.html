@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>Whitechapel — Stay At Home</title>
+  <link rel="icon" href="assets/markers/jack.png" />
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+
+  <!-- ============ LOBBY ============ -->
+  <section id="lobby" class="lobby">
+    <div class="lobby-card">
+      <div class="lobby-brand">
+        <img src="assets/markers/jack.png" alt="" class="brand-mark" />
+        <div>
+          <h1>Whitechapel</h1>
+          <p class="brand-sub">Stay&#8209;at&#8209;Home shared board &middot; <span class="tag">#StayAtHome</span></p>
+        </div>
+      </div>
+
+      <p class="lobby-blurb">
+        A shared game board for the table you can't sit around. Pick a name, share a
+        room code, and every marker you move is seen by everyone in the room — live.
+      </p>
+
+      <label class="field">
+        <span>Your name</span>
+        <input id="nameInput" type="text" maxlength="18" placeholder="Inspector…" autocomplete="off" />
+      </label>
+
+      <label class="field">
+        <span>Room code</span>
+        <div class="room-row">
+          <input id="roomInput" type="text" maxlength="24" placeholder="e.g. baker-street" autocomplete="off" />
+          <button id="diceBtn" type="button" class="ghost-btn" title="Random room code">🎲</button>
+        </div>
+      </label>
+
+      <button id="enterBtn" type="button" class="primary-btn">Enter the room</button>
+
+      <p class="lobby-foot">
+        Connects over public MQTT (HiveMQ). Anyone with the room code can join and play.
+        No account, no server of your own.
+      </p>
+    </div>
+  </section>
+
+  <!-- ============ GAME ============ -->
+  <section id="game" class="game hidden">
+    <header class="topbar">
+      <div class="topbar-left">
+        <img src="assets/markers/jack.png" alt="" class="topbar-mark" />
+        <strong class="topbar-title">Whitechapel</strong>
+      </div>
+
+      <div class="topbar-room">
+        <span class="room-label">Room</span>
+        <code id="roomCode" class="room-code">—</code>
+        <button id="copyLinkBtn" class="ghost-btn small" title="Copy invite link">Invite</button>
+      </div>
+
+      <div class="topbar-right">
+        <div id="presence" class="presence" title="Players in this room"></div>
+        <span id="connDot" class="conn-dot" title="Connecting…"></span>
+        <button id="menuBtn" class="ghost-btn small">Menu ▾</button>
+      </div>
+
+      <div id="menu" class="menu hidden">
+        <button data-act="seed" class="menu-item">Load sample layout</button>
+        <button data-act="clear" class="menu-item danger">Clear the board</button>
+        <button data-act="recenter" class="menu-item">Re&#8209;centre / fit</button>
+        <button data-act="leave" class="menu-item">Leave room</button>
+      </div>
+    </header>
+
+    <div class="stage-wrap">
+      <div id="viewport" class="viewport">
+        <div id="stage" class="stage">
+          <div id="board" class="board">
+            <img id="boardImg" class="board-img" src="assets/board.jpg" alt="Whitechapel map" draggable="false" />
+            <div id="markers" class="markers"></div>
+            <div id="cursors" class="cursors"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- floating drop-to-delete zone -->
+      <div id="trash" class="trash" title="Drag a marker here to remove it">🗑️</div>
+
+      <!-- saved indicator -->
+      <div id="saveBadge" class="save-badge">saved locally</div>
+    </div>
+
+    <!-- marker tray -->
+    <footer class="tray" id="tray">
+      <span class="tray-hint">Drag a piece onto the board ↑</span>
+      <div class="tray-items" id="trayItems"></div>
+    </footer>
+  </section>
+
+  <!-- toast -->
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="lib/mqtt.min.js"></script>
+  <script src="js/catalog.js"></script>
+  <script src="js/layout.js"></script>
+  <script src="js/state.js"></script>
+  <script src="js/net.js"></script>
+  <script src="js/board.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
