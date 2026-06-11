@@ -21,12 +21,17 @@
     if (global.maplibregl) return Promise.resolve();
     if (_libPromise) return _libPromise;
     _libPromise = new Promise((resolve, reject) => {
-      const link = document.createElement('link');
-      link.rel = 'stylesheet'; link.href = MAPLIBRE_CSS;
-      document.head.appendChild(link);
+      // load the stylesheet too — the canvas is position:absolute and needs it to fill
+      const cssDone = new Promise((res) => {
+        if (document.querySelector('link[href="' + MAPLIBRE_CSS + '"]')) return res();
+        const link = document.createElement('link');
+        link.rel = 'stylesheet'; link.href = MAPLIBRE_CSS;
+        link.onload = res; link.onerror = res;            // don't block on css
+        document.head.appendChild(link);
+      });
       const s = document.createElement('script');
       s.src = MAPLIBRE_JS;
-      s.onload = () => resolve();
+      s.onload = () => cssDone.then(resolve);
       s.onerror = () => reject(new Error('Failed to load MapLibre GL'));
       document.head.appendChild(s);
     });
@@ -68,7 +73,7 @@
       if (!this.map) {
         this.viewport.classList.add('hidden');
         this.mapEl.classList.remove('hidden');
-        void this.mapEl.offsetHeight;       // force layout so the map reads a real size at init
+        this._fixContainerSize();           // ensure the container has a real height NOW
         this.map = new global.maplibregl.Map({
           container: this.mapEl, style,
           center: def.board.center || [0, 20],
@@ -86,14 +91,44 @@
       }
     }
 
-    // MapLibre sizes its canvas once at init; if the container gets its real
-    // size a frame later (lazy load behind awaits), the map can stick at 0px.
-    // A ResizeObserver + a couple of rAF resizes keeps the canvas correct.
+    // Size the map container explicitly to its parent, rather than relying on the
+    // absolute/flex `inset:0` resolving at the right moment. Forces a layout read.
+    _fixContainerSize() {
+      const p = this.mapEl.parentElement;
+      if (!p) return;
+      void p.offsetHeight;
+      const w = p.clientWidth, h = p.clientHeight;
+      if (w > 0) this.mapEl.style.width = w + 'px';
+      if (h > 0) this.mapEl.style.height = h + 'px';
+    }
+
+    // MapLibre locks its canvas size at init; if the container gets its real size a
+    // frame later (lazy load behind awaits), the map sticks at 0px. Observe the
+    // PARENT, re-size the container to it, and resize the map. Repeated rAF/timeout
+    // passes catch late layout; a final check surfaces the measured sizes if it is
+    // genuinely collapsed.
     _observeSize() {
-      const resize = () => { if (this.map) this.map.resize(); };
-      if (global.ResizeObserver) { this._ro = new global.ResizeObserver(resize); this._ro.observe(this.mapEl); }
-      requestAnimationFrame(resize);
-      requestAnimationFrame(() => requestAnimationFrame(resize));
+      const apply = () => { if (!this.map) return; this._fixContainerSize(); this.map.resize(); };
+      const target = this.mapEl.parentElement || this.mapEl;
+      if (global.ResizeObserver) { this._ro = new global.ResizeObserver(apply); this._ro.observe(target); }
+      requestAnimationFrame(apply);
+      requestAnimationFrame(() => requestAnimationFrame(apply));
+      setTimeout(apply, 150);
+      setTimeout(() => {
+        apply();
+        const r = this.mapEl.getBoundingClientRect();
+        const pr = (this.mapEl.parentElement || this.mapEl).getBoundingClientRect();
+        const cv = this.mapEl.querySelector('canvas');
+        const ch = cv ? Math.round(cv.getBoundingClientRect().height) : -1;
+        console.log('[mapboard] container ' + Math.round(r.width) + 'x' + Math.round(r.height) +
+          ', parent ' + Math.round(pr.width) + 'x' + Math.round(pr.height) + ', canvas h ' + ch);
+        if (r.height < 5 || ch < 5) {
+          this.mapEl.setAttribute('data-mapdiag',
+            'Map is 0px — container ' + Math.round(r.width) + '×' + Math.round(r.height) +
+            ', parent ' + Math.round(pr.width) + '×' + Math.round(pr.height) + ', canvas ' + ch +
+            '. Please send Claude these numbers.');
+        } else { this.mapEl.removeAttribute('data-mapdiag'); }
+      }, 700);
     }
 
     _addGrid() {

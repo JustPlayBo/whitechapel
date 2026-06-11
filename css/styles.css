@@ -322,6 +322,15 @@ body {
 /* ============ map board (MapLibre) ============ */
 .map-container { position: absolute; inset: 0; z-index: 1; background: #0e1418; }
 .map-container.hidden { display: none; }
+/* visible only if the map failed to size — shows the measured numbers (fixed so it
+   appears even when the container itself is 0px) */
+.map-container[data-mapdiag]::after {
+  content: attr(data-mapdiag);
+  position: fixed; left: 12px; right: 12px; top: 64px; z-index: 500;
+  background: var(--blood); color: #fff; padding: 10px 14px; border-radius: 8px;
+  font-family: var(--font-ui); font-size: 13px; line-height: 1.4;
+  box-shadow: 0 8px 24px rgba(0,0,0,.5);
+}
 .maplibregl-map { font-family: var(--font-ui); }
 /* pieces pinned on the map — maplibre owns their transform, so don't transition it */
 .maplibregl-marker.marker { transition: filter .12s; will-change: transform; }
