@@ -64,8 +64,13 @@
         overlay();
         const mod = await import(/* @vite-ignore */ MODULE_URL);
         const DiceBox = mod.default || mod.DiceBox || mod;
-        const b = new DiceBox('#dice3d', {
+        // v1.1.x: a SINGLE config object (container = mount selector, id = canvas id).
+        // assetPath MUST live in here or it silently defaults to /assets/dice-box/.
+        const b = new DiceBox({
+          container: '#dice3d',
+          id: 'dice3d-canvas',
           assetPath: ASSET_PATH,
+          theme: 'default',
           scale: 7, gravity: 1.4, throwForce: 6, spinForce: 5,
           enableShadows: true, lightIntensity: 0.9,
         });
