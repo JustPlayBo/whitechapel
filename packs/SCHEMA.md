@@ -201,8 +201,9 @@ loads, numeric polyhedral dice (`sides` ∈ 4/6/8/10/12/20/100) **tumble in 3D**
 board and the settled physics values feed the roll — so the animation the roller sees
 is exactly the number broadcast to the room. It's progressive enhancement: `faces`
 dice (e.g. tali astragali), non-polyhedral sides, browsers without WebGL, or any load
-failure fall back to the instant roller automatically. The library is loaded lazily
-from a CDN at first roll (no build step), so it only downloads if a 3D roll happens.
+failure fall back to the instant roller automatically. The library is self-hosted in
+`lib/dice-box/` (no runtime CDN) and loaded lazily at first roll, so it only downloads
+if a 3D roll actually happens.
 
 ### `turns` — a shared turn indicator
 

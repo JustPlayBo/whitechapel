@@ -43,8 +43,8 @@ be authored with **zero binary assets** (pattern/map board + glyph pieces).
   Still no enforced rules: dice are a shared roller, the turn chip is a shared marker.
   Packs without these blocks are unaffected. → [`packs/SCHEMA.md`](packs/SCHEMA.md)
   Numeric dice **tumble in 3D** ([`@3d-dice/dice-box`](https://github.com/3d-dice/dice-box),
-  loaded lazily from a CDN) when WebGL is available, and fall back to an instant roll
-  otherwise — the settled physics value is what gets broadcast.
+  self-hosted in `lib/dice-box/` — no runtime CDN) when WebGL is available, and fall
+  back to an instant roll otherwise — the settled physics value is what gets broadcast.
 - **Card decks** *(opt-in, per pack)* — a `decks` block deals from a
   [cardsapi.com](https://forge.cardsapi.com) / deckofcardsapi-compatible API
   (standard 52, or your own **CardForge** project via `cardforge: "org/repo"`). The
@@ -139,7 +139,8 @@ js/identity.js          per-player colour
 js/state.js             board model + localStorage persistence (last-writer-wins)
 js/net.js               MQTT transport (HiveMQ over WebSockets), incl. the `game` topic
 js/extras.js            opt-in play aids: rules/context drawer, synced dice, turn chip
-js/dice3d.js            optional 3D physics dice (@3d-dice/dice-box), lazy CDN load
+js/dice3d.js            optional 3D physics dice (@3d-dice/dice-box), lazy-loaded
+lib/dice-box/           vendored @3d-dice/dice-box dist + assets (self-hosted 3D dice)
 js/cards.js             opt-in card decks: cardsapi.com / CardForge pile, draw, shared deck
 js/board.js             DOM board: image/pattern boards, pan/zoom, drag, cursors
 js/mapboard.js          MapLibre board: geo (lng/lat) pieces, grid overlay, cursors

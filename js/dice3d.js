@@ -7,19 +7,24 @@
  * to the instant roller: faces dice (e.g. tali astragali), non-polyhedral sides, no
  * WebGL, or any load/init failure.
  *
- * No build step — the ESM module is dynamically imported from a CDN at first roll, so
- * the heavy Babylon/wasm payload only loads if a 3D roll actually happens. The two
- * URLs below are the only things to change to vendor the assets locally instead.
+ * No build step — the ESM module is dynamically imported at first roll, so the heavy
+ * Babylon/wasm payload only loads if a 3D roll actually happens. dice-box is vendored
+ * same-origin under lib/dice-box/ (no runtime CDN dependency); the two URLs below are
+ * the only things to change to point back at a CDN.
  */
 (function (global) {
   'use strict';
 
-  // Module + deps + runtime assets all come from one CDN (jsDelivr) so there's a single
-  // host to reach — `/+esm` bundles the package as a browser ESM. (esm.sh was flaky from
-  // some networks: ERR_CONNECTION_CLOSED.) To vendor instead, copy @3d-dice/dice-box's
-  // bundled ESM + dist/assets into the repo and point these at the same-origin copies.
-  const MODULE_URL = 'https://cdn.jsdelivr.net/npm/@3d-dice/dice-box@1.1.4/+esm';
-  const ASSET_PATH = 'https://cdn.jsdelivr.net/npm/@3d-dice/dice-box@1.1.4/dist/assets/';
+  // Vendored same-origin under lib/dice-box/ — no external CDN at runtime. dice-box's
+  // published dist is self-contained (Babylon inlined; world.*.js pulled via RELATIVE
+  // imports), so we serve the dist straight from our own origin. Both URLs are made
+  // ABSOLUTE: the physics worker runs with an opaque origin and resolves assetPath
+  // directly, and dynamic import() rejects bare/relative specifiers.
+  //   To switch back to the CDN, set these to:
+  //     https://cdn.jsdelivr.net/npm/@3d-dice/dice-box@1.1.4/+esm
+  //     https://cdn.jsdelivr.net/npm/@3d-dice/dice-box@1.1.4/dist/assets/
+  const MODULE_URL = new URL('lib/dice-box/dice-box.es.js', document.baseURI).href;
+  const ASSET_PATH = new URL('lib/dice-box/assets/', document.baseURI).href;
   const INIT_TIMEOUT = 9000;                 // give up on a slow/blocked load → fall back
   const CLEAR_AFTER = 4500;                   // sweep the dice off after they settle
   const POLY = new Set([4, 6, 8, 10, 12, 20, 100]);
