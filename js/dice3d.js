@@ -14,9 +14,11 @@
 (function (global) {
   'use strict';
 
-  // To vendor instead of CDN: copy @3d-dice/dice-box dist + assets into the repo and
-  // point these at the local copies (served same-origin avoids any worker/CORS issues).
-  const MODULE_URL = 'https://esm.sh/@3d-dice/dice-box@1.1.4';
+  // Module + deps + runtime assets all come from one CDN (jsDelivr) so there's a single
+  // host to reach — `/+esm` bundles the package as a browser ESM. (esm.sh was flaky from
+  // some networks: ERR_CONNECTION_CLOSED.) To vendor instead, copy @3d-dice/dice-box's
+  // bundled ESM + dist/assets into the repo and point these at the same-origin copies.
+  const MODULE_URL = 'https://cdn.jsdelivr.net/npm/@3d-dice/dice-box@1.1.4/+esm';
   const ASSET_PATH = 'https://cdn.jsdelivr.net/npm/@3d-dice/dice-box@1.1.4/dist/assets/';
   const INIT_TIMEOUT = 9000;                 // give up on a slow/blocked load → fall back
   const CLEAR_AFTER = 4500;                   // sweep the dice off after they settle
