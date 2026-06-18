@@ -179,6 +179,8 @@
         count: Math.max(1, (num(x.count) || 1) | 0),
         glyph: str(x.glyph) || null,          // optional tray glyph (🎲 default in UI)
         faces,                                // null = plain 1..sides
+        d3d: x.d3d !== false,                 // opt out of the 3D physics dice
+        themeColor: str(x.themeColor) || null, // 3D dice tint (hex)
       };
     }).filter(Boolean);
   }

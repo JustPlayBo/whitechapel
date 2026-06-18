@@ -389,6 +389,14 @@ body {
 .dice-result.flash { animation: dieflash .5s ease; }
 @keyframes dieflash { 0% { opacity: .15; transform: translateY(-2px); } 100% { opacity: 1; transform: none; } }
 
+/* ============ 3D physics dice overlay (@3d-dice/dice-box) ============ */
+.dice3d-overlay {
+  position: absolute; inset: 0; z-index: 35; pointer-events: none;   /* never blocks dragging */
+  opacity: 0; transition: opacity .2s;
+}
+.dice3d-overlay.show { opacity: 1; }
+.dice3d-overlay canvas { width: 100% !important; height: 100% !important; display: block; }
+
 /* ============ card decks ============ */
 .deck-tray {
   display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-start;

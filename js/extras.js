@@ -66,6 +66,11 @@
       this._buildDrawer(def);
       this._buildDice();
       this._renderTurn();
+      // warm up the 3D dice in the background so the first roll is instant (or has
+      // already fallen back to flat) by the time anyone clicks
+      if (global.Dice3D && this.dice.some((d) => global.Dice3D.supports(d))) {
+        global.Dice3D.ensure().catch(() => {});
+      }
       if (this.refs.onAids) this.refs.onAids();      // app coordinates dice+turns+decks
       else this._syncPlayaidsVisibility();
     }
@@ -216,8 +221,24 @@
     }
 
     roll(die) {
+      // 3D physics dice if available (numeric dice only); the settled values feed the
+      // synced roll so the animation matches the broadcast number. Otherwise instant.
+      if (global.Dice3D && global.Dice3D.supports(die)) {
+        global.Dice3D.roll(die, die.themeColor || null)
+          .then((results) => this._finishRoll(die, results))
+          .catch(() => this._finishRoll(die, this._rollLocal(die)));
+        return;
+      }
+      this._finishRoll(die, this._rollLocal(die));
+    }
+
+    _rollLocal(die) {
       const results = [];
       for (let i = 0; i < die.count; i++) results.push(this._rollOne(die));
+      return results;
+    }
+
+    _finishRoll(die, results) {
       let total = 0, numeric = true;
       results.forEach((r) => { if (typeof r.value === 'number') total += r.value; else numeric = false; });
       const payload = {

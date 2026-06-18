@@ -191,8 +191,18 @@ numeric.
 | `count` | int                           | dice rolled together (default 1)                 |
 | `faces` | array\<string \| `{label,value}`\> | non-uniform faces (e.g. the four faces of an astragalus). Strings are taken as both label and value. |
 | `glyph` | string                        | optional tray glyph (default 🎲)                 |
+| `d3d`   | bool                          | set `false` to force the flat roller (default: 3D when available) |
+| `themeColor` | string                   | hex tint for the 3D dice                         |
 
 d6 numeric rolls render as pip glyphs (⚀–⚅); everything else shows its label.
+
+**3D physics dice.** When [`@3d-dice/dice-box`](https://github.com/3d-dice/dice-box)
+loads, numeric polyhedral dice (`sides` ∈ 4/6/8/10/12/20/100) **tumble in 3D** over the
+board and the settled physics values feed the roll — so the animation the roller sees
+is exactly the number broadcast to the room. It's progressive enhancement: `faces`
+dice (e.g. tali astragali), non-polyhedral sides, browsers without WebGL, or any load
+failure fall back to the instant roller automatically. The library is loaded lazily
+from a CDN at first roll (no build step), so it only downloads if a 3D roll happens.
 
 ### `turns` — a shared turn indicator
 
