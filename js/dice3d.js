@@ -17,14 +17,17 @@
 
   // Vendored same-origin under lib/dice-box/ — no external CDN at runtime. dice-box's
   // published dist is self-contained (Babylon inlined; world.*.js pulled via RELATIVE
-  // imports), so we serve the dist straight from our own origin. Both URLs are made
-  // ABSOLUTE: the physics worker runs with an opaque origin and resolves assetPath
-  // directly, and dynamic import() rejects bare/relative specifiers.
+  // imports), so we serve the dist straight from our own origin.
+  //   MODULE_URL is absolute — dynamic import() rejects bare specifiers.
+  //   ASSET_PATH must be a ROOT-RELATIVE path: dice-box builds asset URLs as
+  //   `${config.origin}${assetPath}…` (origin defaults to location.origin, and is
+  //   forwarded into the physics worker), so a full URL here double-prefixes the
+  //   origin. `.pathname` yields e.g. "/whitechapel/lib/dice-box/assets/".
   //   To switch back to the CDN, set these to:
   //     https://cdn.jsdelivr.net/npm/@3d-dice/dice-box@1.1.4/+esm
-  //     https://cdn.jsdelivr.net/npm/@3d-dice/dice-box@1.1.4/dist/assets/
+  //     and origin:'' + assetPath 'https://cdn.jsdelivr.net/npm/@3d-dice/dice-box@1.1.4/dist/assets/'
   const MODULE_URL = new URL('lib/dice-box/dice-box.es.js', document.baseURI).href;
-  const ASSET_PATH = new URL('lib/dice-box/assets/', document.baseURI).href;
+  const ASSET_PATH = new URL('lib/dice-box/assets/', document.baseURI).pathname;
   const INIT_TIMEOUT = 9000;                 // give up on a slow/blocked load → fall back
   const CLEAR_AFTER = 4500;                   // sweep the dice off after they settle
   const POLY = new Set([4, 6, 8, 10, 12, 20, 100]);
