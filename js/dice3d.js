@@ -16,8 +16,8 @@
 
   // To vendor instead of CDN: copy @3d-dice/dice-box dist + assets into the repo and
   // point these at the local copies (served same-origin avoids any worker/CORS issues).
-  const MODULE_URL = 'https://esm.sh/@3d-dice/dice-box@1.1.14';
-  const ASSET_PATH = 'https://cdn.jsdelivr.net/npm/@3d-dice/dice-box@1.1.14/dist/assets/';
+  const MODULE_URL = 'https://esm.sh/@3d-dice/dice-box@1.1.4';
+  const ASSET_PATH = 'https://cdn.jsdelivr.net/npm/@3d-dice/dice-box@1.1.4/dist/assets/';
   const INIT_TIMEOUT = 9000;                 // give up on a slow/blocked load → fall back
   const CLEAR_AFTER = 4500;                   // sweep the dice off after they settle
   const POLY = new Set([4, 6, 8, 10, 12, 20, 100]);
