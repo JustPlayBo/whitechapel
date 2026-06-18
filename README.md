@@ -37,6 +37,16 @@ be authored with **zero binary assets** (pattern/map board + glyph pieces).
 - **Persisted locally** — every player mirrors the whole board into their browser's
   `localStorage`, so a refresh or a dropped connection keeps the table intact and
   can re-seed the room for others.
+- **Tells players how to play** *(opt-in, per pack)* — a pack can carry `rules` and
+  `context` (a slide-in **ℹ︎ Rules** drawer), a `dice` block (a synced dice roller —
+  rolls are broadcast to the room) and a `turns` block (a shared "whose turn" chip).
+  Still no enforced rules: dice are a shared roller, the turn chip is a shared marker.
+  Packs without these blocks are unaffected. → [`packs/SCHEMA.md`](packs/SCHEMA.md)
+- **Card decks** *(opt-in, per pack)* — a `decks` block deals from a
+  [cardsapi.com](https://forge.cardsapi.com) / deckofcardsapi-compatible API
+  (standard 52, or your own **CardForge** project via `cardforge: "org/repo"`). The
+  room shares one server-shuffled deck over MQTT; a drawn card becomes an ordinary
+  image-backed piece that syncs and drags like any token. → the *Card table* built-in.
 
 ## Run it
 
@@ -98,6 +108,10 @@ Topics, all under `lfw/<room>/`:
 | `presence/<clientId>` |   yes    | `{name,color}`; empty (or LWT) = left     |
 | `cursor/<clientId>`   |    no    | live pointer position, throttled          |
 | `sync/req` `sync/full`|    no    | a joiner asks; peers answer with the board |
+| `dice`                |    no    | a shared dice roll `{by,label,results,total,t}` |
+| `turn`                |   yes    | whose turn it is `{idx,by,t}` (shared indicator) |
+| `deck/<deckId>`       |   yes    | the room's shared server-side deck `{deck_id,remaining,…}` |
+| `deckdraw`            |    no    | announces a draw `{by,deckId,cards,t}` (for the log) |
 
 - The **`game`** topic is how the whole room agrees on one pack: the first player to
   arrive publishes it (retained); anyone using *Change game…* republishes it and
@@ -121,6 +135,8 @@ js/gamedef.js           the abstraction: load/normalise a pack, render board & p
 js/identity.js          per-player colour
 js/state.js             board model + localStorage persistence (last-writer-wins)
 js/net.js               MQTT transport (HiveMQ over WebSockets), incl. the `game` topic
+js/extras.js            opt-in play aids: rules/context drawer, synced dice, turn chip
+js/cards.js             opt-in card decks: cardsapi.com / CardForge pile, draw, shared deck
 js/board.js             DOM board: image/pattern boards, pan/zoom, drag, cursors
 js/mapboard.js          MapLibre board: geo (lng/lat) pieces, grid overlay, cursors
 js/app.js               glue: lobby, pack picker, controller switching, presence, menu

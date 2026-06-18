@@ -73,10 +73,23 @@
       const frac = (piece && piece.size) || (this.def && this.def.board.pieceSize) || 0.05;
       return Math.round(frac * this.BASE_W);
     }
+    // resolve a marker to a piece def: a declared piece, a self-describing card
+    // (marker carries img/label/sz), or a labelled fallback chip.
+    _pieceFor(m) {
+      let p = this.pieceMap.get(m.type);
+      if (p) return p;
+      if (m && m.img) {
+        p = { type: m.type, label: m.label || 'Card', image: m.img,
+              glyph: null, color: null, bg: null, size: m.sz || (this.def && this.def.board.pieceSize) || 0.12 };
+        this.pieceMap.set(m.type, p);          // cache so sizing / drag find it
+        return p;
+      }
+      return global.GameDef.fallbackPiece(m.type);
+    }
     _applySizes() {
       this.els.forEach((el, id) => {
         const m = this._markersCache.find((x) => x.id === id);
-        const piece = m && (this.pieceMap.get(m.type) || global.GameDef.fallbackPiece(m.type));
+        const piece = m && this._pieceFor(m);
         if (piece) el.style.setProperty('--sz', this._sizePx(piece) + 'px');
       });
     }
@@ -118,11 +131,12 @@
     }
 
     upsert(m) {
-      const piece = this.pieceMap.get(m.type) || global.GameDef.fallbackPiece(m.type);
+      const piece = this._pieceFor(m);
       let el = this.els.get(m.id);
       if (!el) {
         el = global.GameDef.renderPiece(piece);
         el.classList.add('appear');
+        if (m.img) el.classList.add('piece-card');     // a drawn card — styled rectangular
         el.dataset.id = m.id;
         el.style.setProperty('--sz', this._sizePx(piece) + 'px');
         this.markersEl.appendChild(el);

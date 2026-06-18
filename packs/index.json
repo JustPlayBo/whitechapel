@@ -19,6 +19,11 @@
       "id": "worldmap",
       "name": "World map (MapLibre)",
       "ref": "packs/world.json"
+    },
+    {
+      "id": "cards",
+      "name": "Card table — open deck",
+      "ref": "packs/cards.json"
     }
   ]
 }

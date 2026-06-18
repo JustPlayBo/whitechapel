@@ -167,6 +167,8 @@
     /* ---- the game pack the room is running ---- */
     let currentDef = null;
     let roomGameKnown = false;
+    let extras = null;                       // RoomExtras — created once net exists
+    let decks = null;                        // DeckManager — created once net exists
 
     async function applyGame(def) {
       ensureController(def);
@@ -174,13 +176,27 @@
       await board.setDef(def);              // MapBoard.setDef is async (loads MapLibre)
       buildTray(def, board);
       $('gameName').textContent = def.name;
+      if (extras) extras.setDef(def);       // rules drawer / dice / turn for this pack
+      if (decks) decks.setDef(def);         // card decks for this pack
       board.renderAll(state.all());
       board.fit();
+    }
+
+    // show the floating play-aids panel if any of turn / dice / decks is active
+    function refreshAids() {
+      const pa = $('playaids');
+      const has = !$('turnBar').classList.contains('hidden')
+        || !$('diceTray').classList.contains('hidden')
+        || !$('deckTray').classList.contains('hidden');
+      pa.classList.toggle('hidden', !has);
     }
     async function loadAndApply(input, opts) {
       const def = await GameDef.load(input);
       await applyGame(def);
-      if (opts && opts.publish) { net.publishGame(GameDef.toPayload(def)); roomGameKnown = true; }
+      if (opts && opts.publish) {
+        net.publishGame(GameDef.toPayload(def)); roomGameKnown = true;
+        if (extras) extras.publishReset();  // a local game switch resets the shared turn
+      }
       return def;
     }
 
@@ -200,7 +216,30 @@
       onCursor: (cid, c) => board.showCursor(cid, c),
       onSyncRequest: (from) => { if (state.all().length) net.sendFull(from, state.all()); },
       onSyncFull: (markers) => markers.forEach((m) => state.applyRemote(m)),
+      onDice: (roll) => extras && extras.applyDice(roll),
+      onTurn: (turn) => extras && extras.applyTurn(turn),
+      onDeck: (uiId, payload) => decks && decks.onDeck(uiId, payload),
+      onDeckDraw: (payload) => decks && decks.onDeckDraw(payload),
     });
+
+    // the play-aids layer (rules drawer / synced dice / turn indicator) needs net
+    extras = new window.RoomExtras({
+      infoBtn: $('infoBtn'), drawer: $('infoDrawer'), drawerBody: $('drawerBody'),
+      drawerTitle: $('drawerTitle'), drawerClose: $('drawerClose'), backdrop: $('drawerBackdrop'),
+      playaids: $('playaids'), turnBar: $('turnBar'), turnWho: $('turnWho'),
+      turnNext: $('turnNext'), diceTray: $('diceTray'), diceResult: null,
+      onAids: refreshAids,
+    }, net, identity, toast);
+
+    // a drawn card is just an image-backed marker that syncs like any piece
+    function placeCard(type, x, y, extra) {
+      const m = state.add(type, x, y, name, extra);
+      net.publishMarker(m);
+    }
+    decks = new window.DeckManager({ deckTray: $('deckTray') }, net, identity,
+      { placeCard, toast, onAids: refreshAids });
+
+    if (currentDef) { extras.setDef(currentDef); decks.setDef(currentDef); }  // catch up: first pack loaded before net existed
 
     // adopt the room's game if it differs from ours; otherwise just note it's set
     async function onRoomGame(payload) {

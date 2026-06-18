@@ -7,6 +7,10 @@
  *   cursor/<clientId>     volatile  {x,y} live pointer, throttled
  *   sync/req             volatile  {from}            "send me the board"
  *   sync/full            volatile  {markers:[...]}   a full-state answer
+ *   dice                 volatile  {by,label,rolls,total,t}  a shared dice roll
+ *   turn                 retained  {idx,by,t}        whose turn it is (shared indicator)
+ *   deck/<deckId>        retained  {deck_id,remaining,cardforge,by,t}  shared server-side deck
+ *   deckdraw             volatile  {by,deckId,cards,t}  announces a draw (for the log/toast)
  *
  * Late joiners are covered two ways: MQTT *retained* marker messages replay the
  * current board on subscribe, and a sync/req → sync/full round-trip lets any
@@ -101,6 +105,24 @@
         if (r && r.to === this.id) this.h.onSyncFull && this.h.onSyncFull(r.markers || []);
         return;
       }
+      if (rest === 'dice') {
+        const r = safe(text); if (r) this.h.onDice && this.h.onDice(r);
+        return;
+      }
+      if (rest === 'turn') {
+        if (!text) { this.h.onTurn && this.h.onTurn(null); return; }
+        const r = safe(text); if (r) this.h.onTurn && this.h.onTurn(r);
+        return;
+      }
+      if (rest === 'deckdraw') {
+        const r = safe(text); if (r) this.h.onDeckDraw && this.h.onDeckDraw(r);
+        return;
+      }
+      if (rest.startsWith('deck/')) {
+        const uiId = rest.slice('deck/'.length);
+        this.h.onDeck && this.h.onDeck(uiId, text ? safe(text) : null);
+        return;
+      }
     }
 
     /* ---- publishers ---- */
@@ -113,8 +135,11 @@
     publishGame(payload) { this._pub('game', payload, { qos: 0, retain: true }); }
 
     publishMarker(m) {
-      this._pub(`m/${m.id}`, { type: m.type, x: m.x, y: m.y, t: m.t, by: m.by },
-        { qos: 0, retain: true });
+      const payload = { type: m.type, x: m.x, y: m.y, t: m.t, by: m.by };
+      if (m.img) payload.img = m.img;          // self-describing pieces (e.g. drawn cards)
+      if (m.label) payload.label = m.label;
+      if (m.sz) payload.sz = m.sz;
+      this._pub(`m/${m.id}`, payload, { qos: 0, retain: true });
     }
     deleteMarker(id)   { this._pub(`m/${id}`, null, { qos: 0, retain: true }); }
     publishPresence()  { this._pub(`presence/${this.id}`,
@@ -124,6 +149,10 @@
     publishCursor(x, y){ this._pub(`cursor/${this.id}`, { x, y, name: this.identity.name, color: this.identity.color }); }
     requestSync()      { this._pub('sync/req', { from: this.id }); }
     sendFull(to, markers) { this._pub('sync/full', { to, markers }); }
+    publishDice(roll)  { this._pub('dice', roll); }                          // volatile broadcast
+    publishTurn(turn)  { this._pub('turn', turn, { qos: 0, retain: true }); } // retained for joiners
+    publishDeck(uiId, obj) { this._pub(`deck/${uiId}`, obj, { qos: 0, retain: true }); } // shared deck handle
+    publishDeckDraw(obj)   { this._pub('deckdraw', obj); }                    // volatile draw announce
 
     leave() {
       try { this.clearPresence(); } catch (e) {}

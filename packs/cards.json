@@ -1,0 +1,45 @@
+{
+  "schema": "boardgame/1.2",
+  "id": "cards",
+  "name": "Card table — open deck",
+  "description": "A felt table and a shuffled deck. Tap the pile to deal cards onto the table, then move them however your game demands. Powered by the cardsapi.com / CardForge deck API — swap in your own CardForge project to deal a custom deck.",
+  "board": {
+    "pattern": { "type": "solid", "color": "#1f5132" },
+    "aspect": 1.6,
+    "color": "#10261a",
+    "pieceSize": 0.05
+  },
+  "pieces": [
+    { "type": "chip-r", "label": "Red chip", "glyph": "", "bg": "#a8392c" },
+    { "type": "chip-b", "label": "Blue chip", "glyph": "", "bg": "#2f5a8a" },
+    { "type": "chip-g", "label": "Gold chip", "glyph": "", "bg": "#caa05a" }
+  ],
+  "decks": [
+    { "id": "main", "label": "Standard 52", "shuffle": true, "cardSize": 0.11 }
+  ],
+  "turns": { "track": true },
+  "rules": {
+    "objective": "There is no built-in game — this is an open card table. Bring your own rules (poker, scopa, tarot, a homebrew TCG…) and use the deck, chips and turn counter as a shared surface.",
+    "players": "1–8",
+    "duration": "as long as you like",
+    "setup": "Tap the deck pile to deal cards onto the table. Drag chips from the tray to bet or mark. Use the turn counter to keep order.",
+    "howToPlay": [
+      "Tap the face-down pile to draw the top card from the shared, server-shuffled deck — everyone draws from the same deck in the same order.",
+      "Drag dealt cards around the table; drag to the 🗑️ to discard.",
+      "Press ⟳ on the pile to shuffle a fresh deck.",
+      "Drag chips from the tray to bet, score or mark."
+    ],
+    "winning": "Whatever your house rules say — the table enforces nothing.",
+    "variants": [
+      "Point the deck at your own CardForge project (`decks[].cardforge: \"org/repo\"`) to deal a custom deck with rendered art."
+    ]
+  },
+  "context": {
+    "period": "Cards reached Europe in the 14th century",
+    "blurb": "Playing cards are a late arrival — they spread from China through the Islamic world to Europe only in the 1370s, more than a thousand years after the dice and board games of antiquity. This table deals from cardsapi.com, a deckofcardsapi.com-compatible API: a standard 52-card deck by default, or any deck you design in CardForge.",
+    "links": [
+      { "label": "cardsapi.com / CardForge", "url": "https://forge.cardsapi.com" },
+      { "label": "CardForge designer", "url": "https://github.com/openfantasymap/cardsapi.designer" }
+    ]
+  }
+}

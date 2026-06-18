@@ -173,13 +173,26 @@
       if (this._ready) this._draw(m);
     }
 
+    _pieceFor(m) {
+      let p = this.pieceMap.get(m.type);
+      if (p) return p;
+      if (m && m.img) {
+        p = { type: m.type, label: m.label || 'Card', image: m.img,
+              glyph: null, color: null, bg: null, size: m.sz || null };
+        this.pieceMap.set(m.type, p);
+        return p;
+      }
+      return global.GameDef.fallbackPiece(m.type);
+    }
+
     _draw(m) {
       const ML = global.maplibregl;
       let mk = this._markers.get(m.id);
       if (!mk) {
-        const piece = this.pieceMap.get(m.type) || global.GameDef.fallbackPiece(m.type);
+        const piece = this._pieceFor(m);
         const el = global.GameDef.renderPiece(piece);
         el.classList.add('map-piece');
+        if (m.img) el.classList.add('piece-card');
         el.style.setProperty('--sz', this._sizePx(piece) + 'px');
         el.addEventListener('contextmenu', (e) => { e.preventDefault(); this.cb.onRemove && this.cb.onRemove(m.id); });
         mk = new ML.Marker({ element: el, anchor: 'center', draggable: true });

@@ -336,7 +336,152 @@ body {
 .maplibregl-marker.marker { transition: filter .12s; will-change: transform; }
 .map-piece { filter: drop-shadow(0 2px 3px rgba(0,0,0,.6)); }
 /* keep the floating UI above the map canvas */
-.stage-wrap .trash, .stage-wrap .save-badge { z-index: 30; }
+.stage-wrap .trash, .stage-wrap .save-badge, .stage-wrap .playaids { z-index: 30; }
+
+/* ============ play aids: turn indicator + dice roller ============ */
+.playaids {
+  position: absolute; left: 16px; top: 16px; z-index: 30;
+  display: flex; flex-direction: column; gap: 10px; max-width: min(46vw, 320px);
+}
+.playaids.hidden { display: none; }
+
+.turn-bar {
+  display: flex; align-items: center; gap: 9px;
+  background: rgba(30,22,15,.9); border: 1px solid var(--edge);
+  padding: 7px 9px 7px 12px; border-radius: 12px; box-shadow: 0 8px 22px rgba(0,0,0,.5);
+}
+.turn-bar.hidden { display: none; }
+.turn-label { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--sepia-dim); }
+.turn-who { font-family: var(--font); font-size: 16px; color: var(--gold-bright); margin-right: 2px; }
+.turn-who.mine { color: var(--good); }
+.turn-who.mine::after { content: " (you)"; font-size: 11px; color: var(--sepia-dim); }
+
+.dice-tray {
+  display: flex; flex-wrap: wrap; align-items: stretch; gap: 8px;
+  background: rgba(30,22,15,.9); border: 1px solid var(--edge);
+  padding: 10px; border-radius: 12px; box-shadow: 0 8px 22px rgba(0,0,0,.5);
+}
+.dice-tray.hidden { display: none; }
+.die-btn {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  min-width: 58px; padding: 7px 9px; cursor: pointer;
+  background: var(--panel-2); color: var(--sepia);
+  border: 1px solid var(--edge); border-radius: 10px;
+  font-family: var(--font-ui); transition: transform .1s, border-color .12s, background .12s;
+}
+.die-btn:hover { border-color: var(--gold); background: #34261a; }
+.die-btn:active { transform: scale(.95); }
+.die-btn .die-face { font-size: 22px; line-height: 1; }
+.die-btn .die-label { font-size: 10px; color: var(--sepia-dim); text-align: center; }
+.dice-result {
+  flex-basis: 100%; min-height: 1.4em; display: flex; align-items: center; flex-wrap: wrap; gap: 6px;
+  font-family: var(--font-ui); font-size: 13px; color: var(--sepia);
+}
+.dice-result:empty { display: none; }
+.roll-who { color: var(--sepia-dim); }
+.roll-faces { display: inline-flex; gap: 4px; }
+.roll-face {
+  display: inline-grid; place-items: center; min-width: 1.7em; height: 1.7em; padding: 0 .25em;
+  font-size: 18px; line-height: 1; color: var(--gold-bright);
+  background: #1c140d; border: 1px solid var(--edge); border-radius: 6px;
+}
+.roll-total { font-family: var(--font); color: var(--gold-bright); font-size: 15px; }
+.dice-result.flash { animation: dieflash .5s ease; }
+@keyframes dieflash { 0% { opacity: .15; transform: translateY(-2px); } 100% { opacity: 1; transform: none; } }
+
+/* ============ card decks ============ */
+.deck-tray {
+  display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-start;
+  background: rgba(30,22,15,.9); border: 1px solid var(--edge);
+  padding: 10px; border-radius: 12px; box-shadow: 0 8px 22px rgba(0,0,0,.5);
+}
+.deck-tray.hidden { display: none; }
+.deck-tile { display: flex; flex-direction: column; align-items: center; gap: 5px; }
+.deck-pile {
+  width: 50px; height: 70px; cursor: pointer; padding: 0; overflow: hidden;
+  display: grid; place-items: center; border-radius: 9px;
+  color: var(--gold-bright); background: linear-gradient(150deg, #3a2c1a, #241a10);
+  border: 1px solid var(--gold); box-shadow: 2px 2px 0 #1c140d, 4px 4px 0 rgba(0,0,0,.3);
+  transition: transform .1s, box-shadow .12s, filter .12s;
+}
+.deck-pile:hover { filter: brightness(1.12); }
+.deck-pile:active { transform: translate(2px, 2px); box-shadow: 0 0 0 #1c140d; }
+.deck-back { font-size: 34px; line-height: 1; }
+.deck-back-img { width: 100%; height: 100%; object-fit: cover; }
+.deck-meta { display: flex; flex-direction: column; align-items: center; gap: 1px; }
+.deck-label { font-family: var(--font); font-size: 12px; color: var(--sepia); }
+.deck-count { font-size: 10px; color: var(--sepia-dim); }
+.deck-new {
+  margin-top: 2px; cursor: pointer; font-size: 13px; line-height: 1; color: var(--sepia-dim);
+  background: var(--panel-2); border: 1px solid var(--edge); border-radius: 7px; padding: 2px 8px;
+  transition: color .12s, border-color .12s;
+}
+.deck-new:hover { color: var(--gold-bright); border-color: var(--gold); }
+
+/* a drawn card on the table — rectangular, unlike the square tokens */
+.marker.piece-card {
+  height: auto; border-radius: 7px; background: #fbf7ec;
+  box-shadow: 0 4px 12px rgba(0,0,0,.55); border: 1px solid rgba(0,0,0,.25);
+}
+.maplibregl-marker.marker.piece-card { height: auto; }
+
+/* ============ rules & context drawer ============ */
+.drawer-backdrop {
+  position: fixed; inset: 0; z-index: 60; background: rgba(8,5,3,.55);
+  opacity: 0; pointer-events: none; transition: opacity .25s;
+}
+.drawer-backdrop.show { opacity: 1; pointer-events: auto; }
+.drawer {
+  position: fixed; top: 0; right: 0; bottom: 0; z-index: 70;
+  width: min(420px, 92vw); display: flex; flex-direction: column;
+  background: var(--panel); border-left: 1px solid var(--gold);
+  box-shadow: -16px 0 40px rgba(0,0,0,.55);
+  transform: translateX(100%); transition: transform .28s cubic-bezier(.4,0,.2,1);
+}
+.drawer.open { transform: none; }
+.drawer-top {
+  display: flex; align-items: center; gap: 10px; padding: 16px 18px;
+  border-bottom: 1px solid var(--edge);
+}
+.drawer-title { flex: 1; margin: 0; font-family: var(--font); font-size: 20px; color: var(--gold-bright); }
+.drawer-body { flex: 1; overflow-y: auto; padding: 16px 18px; }
+.drawer-body p { color: var(--sepia); line-height: 1.6; margin: 0 0 12px; font-size: 14px; }
+.drawer-lead { color: var(--sepia) !important; font-size: 14.5px !important; }
+.drawer-sec { margin: 4px 0 20px; }
+.drawer-h {
+  font-family: var(--font); font-size: 13px; text-transform: uppercase; letter-spacing: .12em;
+  color: var(--gold); margin: 0 0 10px; padding-bottom: 6px; border-bottom: 1px solid var(--edge);
+}
+.drawer-h4 { font-family: var(--font-ui); font-size: 12px; text-transform: uppercase; letter-spacing: .07em;
+  color: var(--sepia-dim); margin: 14px 0 5px; }
+.ctx-period {
+  display: inline-block; font-size: 11px; letter-spacing: .05em; color: var(--gold-bright);
+  background: #2a1f14; border: 1px solid var(--edge); border-radius: 20px; padding: 3px 10px; margin-bottom: 10px;
+}
+.ctx-fig { margin: 0 0 12px; }
+.ctx-img { width: 100%; border-radius: 8px; border: 1px solid var(--edge); display: block; }
+.ctx-credit { font-size: 11px; color: var(--sepia-dim); margin-top: 4px; }
+.drawer-list { margin: 0 0 8px; padding-left: 20px; }
+.drawer-list li { color: var(--sepia); line-height: 1.55; margin-bottom: 5px; font-size: 13.5px; }
+.drawer-steps { margin: 0 0 8px; padding-left: 22px; }
+.drawer-steps li { color: var(--sepia); line-height: 1.6; margin-bottom: 8px; font-size: 14px; }
+.drawer-steps li::marker { color: var(--gold); font-family: var(--font); }
+.rules-meta { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 6px; }
+.meta-chip {
+  font-size: 12px; color: var(--sepia); background: #2a1f14;
+  border: 1px solid var(--edge); border-radius: 8px; padding: 4px 10px;
+}
+.meta-chip b { color: var(--sepia-dim); font-weight: 600; }
+.drawer-links { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.drawer-link {
+  font-size: 12.5px; color: var(--gold-bright); text-decoration: none;
+  border: 1px solid var(--edge); border-radius: 8px; padding: 5px 11px; transition: border-color .12s, background .12s;
+}
+.drawer-link:hover { border-color: var(--gold); background: #2a1f14; }
+.drawer-foot {
+  padding: 12px 18px; border-top: 1px solid var(--edge);
+  font-size: 11.5px; color: var(--sepia-dim); line-height: 1.5; margin: 0;
+}
 
 @media (max-width: 560px) {
   .topbar { flex-wrap: wrap; gap: 8px; }
@@ -345,4 +490,5 @@ body {
   .pcount { display: none; }
   .tray-item { width: 64px; }
   .tray-item span { display: none; }
+  .playaids { max-width: 70vw; }
 }

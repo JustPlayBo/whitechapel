@@ -16,12 +16,33 @@
  *       { "type": "jack", "label": "Jack", "image": "url|data-uri", "size": 0.03 },
  *       { "type": "wp",   "label": "Pawn", "glyph": "♙", "color": "#fff" }
  *     ],
- *     "setup": [ { "type": "jack", "x": 0.5, "y": 0.5 } ]   // optional preset layout
+ *     "setup": [ { "type": "jack", "x": 0.5, "y": 0.5 } ],  // optional preset layout
+ *
+ *     // ---- optional "tell players how to play" blocks (additive, boardgame/1.1) ----
+ *     "rules":   { "objective": "...", "players": "2", "setup": "...",
+ *                  "howToPlay": ["...","..."], "winning": "...",
+ *                  "variants": ["..."], "duration": "10–20 min" },
+ *     "context": { "period": "Roman Empire", "blurb": "...",
+ *                  "sources": ["..."], "links": [{ "label":"…","url":"…" }],
+ *                  "image": "url", "credit": "…" },
+ *     "dice":    [ { "id":"tesserae", "label":"Tesserae", "sides":6, "count":2 } ],
+ *     "turns":   { "players": ["Albus","Ruber"], "track": true },
+ *
+ *     // ---- optional card decks (additive, boardgame/1.2) ----
+ *     // a CardForge / cardsapi.com (deckofcardsapi-compatible) deck. The engine
+ *     // creates a server-side deck, shares its deck_id over MQTT, and draws cards
+ *     // that become image-backed pieces on the table.
+ *     "decks":   [ { "id":"main", "label":"Tavern deck",
+ *                    "cardforge":"openfantasymap/cardforge-ab12cd", "shuffle":true } ]
  *   }
  *
  * Pieces are either image-backed or glyph-backed (emoji / unicode / a letter),
  * so a complete game can be authored with zero binary assets. The engine never
  * hard-codes any of this — it just loads, normalises and renders the def.
+ *
+ * `rules`/`context`/`dice`/`turns` are all OPTIONAL — packs that omit them behave
+ * exactly as before (no drawer, no dice tray, no turn chip). The engine still
+ * enforces nothing: dice are a synced roller, turns are a shared indicator.
  */
 (function (global) {
   'use strict';
@@ -96,6 +117,102 @@
     return bg;
   }
 
+  /* ---- optional info blocks: rules / context / dice / turns ---- */
+  function str(v) { return v == null ? '' : String(v); }
+  function strList(v) {
+    if (v == null) return [];
+    const a = Array.isArray(v) ? v : [v];
+    return a.map((x) => str(x)).filter((s) => s.trim() !== '');
+  }
+  function hasAny(obj) { return Object.keys(obj).some((k) => {
+    const v = obj[k]; return Array.isArray(v) ? v.length : (v !== '' && v != null);
+  }); }
+
+  function normRules(r) {
+    if (!r || typeof r !== 'object') return null;
+    const out = {
+      objective: str(r.objective || r.goal),
+      players: str(r.players),
+      duration: str(r.duration),
+      setup: str(r.setup),
+      howToPlay: strList(r.howToPlay || r.steps || r.play),
+      winning: str(r.winning || r.win),
+      variants: strList(r.variants),
+    };
+    return hasAny(out) ? out : null;
+  }
+
+  function normContext(c, baseUrl) {
+    if (!c || typeof c !== 'object') return null;
+    const links = (Array.isArray(c.links) ? c.links : []).map((l) => {
+      if (!l) return null;
+      if (typeof l === 'string') return { label: l, url: l };
+      return { label: str(l.label || l.title || l.url), url: str(l.url || l.href) };
+    }).filter((l) => l && l.url);
+    const out = {
+      period: str(c.period),
+      blurb: str(c.blurb || c.description),
+      sources: strList(c.sources),
+      links,
+      image: c.image ? resolveUrl(str(c.image), baseUrl) : '',
+      credit: str(c.credit),
+    };
+    return hasAny(out) ? out : null;
+  }
+
+  // a face is { label, value } — numeric faces auto-generate from `sides`
+  function normDice(d) {
+    if (!Array.isArray(d)) return [];
+    return d.map((x, i) => {
+      if (!x || typeof x !== 'object') return null;
+      let faces = null;
+      if (Array.isArray(x.faces) && x.faces.length) {
+        faces = x.faces.map((f) => (f && typeof f === 'object')
+          ? { label: str(f.label != null ? f.label : f.value), value: num(f.value) }
+          : { label: str(f), value: num(f) || str(f) });
+      }
+      const sides = num(x.sides) || (faces ? faces.length : 6);
+      return {
+        id: str(x.id || x.label || ('die' + i)) || ('die' + i),
+        label: str(x.label || x.id || ('Die ' + (i + 1))),
+        sides: Math.max(2, sides | 0),
+        count: Math.max(1, (num(x.count) || 1) | 0),
+        glyph: str(x.glyph) || null,          // optional tray glyph (🎲 default in UI)
+        faces,                                // null = plain 1..sides
+      };
+    }).filter(Boolean);
+  }
+
+  function normTurns(t) {
+    if (!t || typeof t !== 'object') return null;
+    const players = strList(t.players);
+    const track = t.track !== false;          // default on when a turns block exists
+    if (!players.length && !track) return null;
+    return { players, track };
+  }
+
+  // a deck drawn from a CardForge / cardsapi.com deckofcardsapi-compatible API.
+  //   { id, label, api, cardforge, shuffle, back, cardSize }
+  // `cardforge: "org/repo"` selects a custom CardForge project; omit for a
+  // standard 52-card deck. The engine creates a server-side deck, shares its
+  // deck_id over MQTT, and draws cards that become image-backed pieces.
+  const DEFAULT_DECK_API = 'https://forge.cardsapi.com';
+  function normDecks(d) {
+    if (!Array.isArray(d)) return [];
+    return d.map((x, i) => {
+      if (!x || typeof x !== 'object') return null;
+      return {
+        id: str(x.id || ('deck' + i)) || ('deck' + i),
+        label: str(x.label || x.id || 'Deck'),
+        api: (str(x.api) || DEFAULT_DECK_API).replace(/\/+$/, ''),
+        cardforge: str(x.cardforge) || null,     // "org/repo"; null = standard 52
+        shuffle: x.shuffle !== false,            // default shuffle on
+        back: str(x.back) || '🂠',               // glyph or image url for the pile face
+        cardSize: num(x.cardSize) || null,       // drawn-card size, fraction of board width
+      };
+    }).filter(Boolean);
+  }
+
   /* ---- normalisation: raw json -> a predictable internal shape ---- */
   function normalize(raw, baseUrl) {
     if (!raw || typeof raw !== 'object') throw new Error('Game pack is not an object');
@@ -141,6 +258,12 @@
       setup: (raw.setup || []).filter((s) => s && s.type).map((s) => ({
         type: String(s.type), x: num(s.x), y: num(s.y),
       })),
+      // optional "how to play / what is this" blocks — null/[] when absent
+      rules: normRules(raw.rules),
+      context: normContext(raw.context, baseUrl),
+      dice: normDice(raw.dice),
+      turns: normTurns(raw.turns),
+      decks: normDecks(raw.decks),
       source: { ref: null, raw },              // filled in by load()
     };
   }
@@ -227,9 +350,15 @@
   function num(v) { const n = Number(v); return Number.isFinite(n) ? n : 0; }
   function clamp01(v) { const n = Number(v); return Number.isFinite(n) ? Math.min(1, Math.max(0, n)) : 0; }
 
+  // does this pack carry anything the Rules drawer would show?
+  function hasInfo(def) {
+    return !!(def && (def.rules || def.context || (def.description && def.description.trim())));
+  }
+
   global.GameDef = {
     SCHEMA, DEFAULT_PIECE_SIZE,
     load, loadRef, loadInline, normalize,
     key, toPayload, pieceMap, fallbackPiece, renderPiece, applyBoard, resolveUrl, resolveRef,
+    hasInfo,
   };
 })(window);

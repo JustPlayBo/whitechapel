@@ -8,17 +8,27 @@ switches to it.
 A pack can be authored with **zero binary assets**: boards can be generated
 patterns and pieces can be unicode/emoji glyphs.
 
+Packs may also carry optional **`rules`**, **`context`**, **`dice`** and **`turns`**
+blocks (added in the additive revision **`boardgame/1.1`**) that *tell players how to
+play* — a rules drawer, a synced dice roller, and a shared turn indicator. They are
+purely informational/assistive: the engine still enforces nothing, and a pack that
+omits them behaves exactly as a `boardgame/1` pack. See **Telling players how to play**.
+
 ## Top level
 
 | Field         | Type     | Notes                                              |
 | ------------- | -------- | -------------------------------------------------- |
-| `schema`      | string   | `"boardgame/1"` (optional, informational)          |
+| `schema`      | string   | `"boardgame/1"` or `"boardgame/1.1"` (optional, informational) |
 | `id`          | string   | stable id, used for room sync identity             |
 | `name`        | string   | shown in the lobby, topbar, and menus              |
-| `description` | string   | optional blurb                                     |
+| `description` | string   | optional blurb (shown atop the rules drawer)       |
 | `board`       | object   | see **Board**                                      |
 | `pieces`      | array    | see **Pieces** — the tray of draggable tokens      |
 | `setup`       | array    | optional preset layout (the "Load sample layout")  |
+| `rules`       | object   | optional — how to play (drawer). See below.        |
+| `context`     | object   | optional — what/when this game is (drawer). See below. |
+| `dice`        | array    | optional — declares a synced dice roller. See below. |
+| `turns`       | object   | optional — a shared "whose turn" indicator. See below. |
 
 ## Board
 
@@ -99,6 +109,146 @@ A preset layout loaded on demand from the menu. Coordinates are normalised `[0,1
 ```json
 "setup": [ { "type": "wp", "x": 0.0625, "y": 0.8125 }, … ]
 ```
+
+## Telling players how to play (optional, `boardgame/1.1`)
+
+The engine is a *bare synced table* — it never enforces rules. These four optional
+blocks let a pack carry the human-readable rules and a couple of shared table aids,
+so players opening a room they've never seen know what to do. All are optional and
+omitting them changes nothing. They ride inside the pack, so they sync to the whole
+room automatically (the pack is shared verbatim over MQTT).
+
+### `rules` — the "How to play" drawer
+
+Opens from the **ℹ︎ Rules** button in the topbar (shown only when a pack has `rules`,
+`context`, or a `description`).
+
+```json
+"rules": {
+  "objective": "Bear all your pieces off before your opponent.",
+  "players": "2",
+  "duration": "10–20 min",
+  "setup": "Place the pieces as the sample layout shows…",
+  "howToPlay": [ "Roll the dice.", "Move a piece by that many points.", "…" ],
+  "winning": "First to bear off every piece wins.",
+  "variants": [ "Play to two games out of three." ]
+}
+```
+
+| Field       | Type            | Notes                                        |
+| ----------- | --------------- | -------------------------------------------- |
+| `objective` | string          | one-line goal (alias: `goal`)                |
+| `players`   | string          | e.g. `"2"`, `"2–4"`                          |
+| `duration`  | string          | rough length                                 |
+| `setup`     | string          | how the board starts                         |
+| `howToPlay` | array\<string\> | ordered steps (aliases: `steps`, `play`)     |
+| `winning`   | string          | win/end condition (alias: `win`)             |
+| `variants`  | array\<string\> | optional rule variations                     |
+
+### `context` — the "Context" drawer section
+
+```json
+"context": {
+  "period": "Roman Empire, 1st–4th c. CE",
+  "blurb": "A race game found scratched on tavern tables across the empire…",
+  "image": "https://upload.wikimedia.org/…/board.jpg",
+  "credit": "Roman game board, British Museum (CC BY)",
+  "sources": [ "Austin, R. G. (1934). Roman board games. Greece & Rome." ],
+  "links": [ { "label": "Tabula — Wikipedia", "url": "https://en.wikipedia.org/wiki/Tabula_(game)" } ]
+}
+```
+
+| Field     | Type                         | Notes                                  |
+| --------- | ---------------------------- | -------------------------------------- |
+| `period`  | string                       | shown as a pill                        |
+| `blurb`   | string                       | a paragraph (alias: `description`)     |
+| `image`   | url                          | hot-linked illustration (relative paths resolve against the pack URL) |
+| `credit`  | string                       | caption under the image                |
+| `sources` | array\<string\>              | bibliography lines                     |
+| `links`   | array\<`{label,url}`\>       | external links (also accepts bare url strings) |
+
+### `dice` — a synced dice roller
+
+Declares one or more dice. Each appears as a button in a floating tray; a roll is
+**broadcast to the whole room** (volatile — late joiners don't see past rolls) and
+shown as `Name rolled ⚄⚂ = 8`. The engine computes a sum only when all faces are
+numeric.
+
+```json
+"dice": [
+  { "id": "tesserae", "label": "Tesserae", "sides": 6, "count": 2 },
+  { "id": "tali", "label": "Tali", "count": 4,
+    "faces": [ { "label": "I", "value": 1 }, { "label": "III", "value": 3 },
+               { "label": "IV", "value": 4 }, { "label": "VI", "value": 6 } ] }
+]
+```
+
+| Field   | Type                          | Notes                                            |
+| ------- | ----------------------------- | ------------------------------------------------ |
+| `id`    | string                        | optional id                                      |
+| `label` | string                        | tray caption                                     |
+| `sides` | int                           | numeric die `1..sides` (default 6; ignored if `faces`) |
+| `count` | int                           | dice rolled together (default 1)                 |
+| `faces` | array\<string \| `{label,value}`\> | non-uniform faces (e.g. the four faces of an astragalus). Strings are taken as both label and value. |
+| `glyph` | string                        | optional tray glyph (default 🎲)                 |
+
+d6 numeric rolls render as pip glyphs (⚀–⚅); everything else shows its label.
+
+### `turns` — a shared turn indicator
+
+A chip showing whose go it is, plus a **Next ▸** button anyone can press; the current
+seat is **retained**, so late joiners see it. It is an indicator only — nothing is
+enforced, and any player may advance it.
+
+```json
+"turns": { "players": [ "Albus", "Ruber" ], "track": true }
+```
+
+| Field     | Type            | Notes                                                       |
+| --------- | --------------- | ----------------------------------------------------------- |
+| `players` | array\<string\> | seat names, cycled in order. Omit for a plain "Turn N" counter. |
+| `track`   | bool            | defaults `true` when a `turns` block is present             |
+
+If a player's display name matches the active seat name, the chip highlights as
+"(you)".
+
+### `decks` — card decks (`boardgame/1.2`)
+
+Declares one or more **card decks** drawn from a [cardsapi.com](https://forge.cardsapi.com)
+/ [deckofcardsapi.com](https://deckofcardsapi.com)-compatible API. Each deck shows
+a face-down **pile** in the play-aids panel: tap it to deal a card onto the table,
+or press **⟳** to shuffle a fresh deck.
+
+```json
+"decks": [
+  { "id": "main", "label": "Tavern deck",
+    "cardforge": "openfantasymap/cardforge-ab12cd",
+    "shuffle": true, "back": "🂠", "cardSize": 0.12 }
+]
+```
+
+| Field       | Type   | Notes                                                            |
+| ----------- | ------ | --------------------------------------------------------------- |
+| `id`        | string | stable id (used for the shared-deck MQTT topic)                 |
+| `label`     | string | pile caption                                                    |
+| `cardforge` | string | a CardForge project `"org/repo"` — omit for a **standard 52** deck |
+| `api`       | string | API base, default `https://forge.cardsapi.com`                  |
+| `shuffle`   | bool   | shuffle on deal (default `true`)                                |
+| `back`      | string | pile-face glyph (default `🂠`) or an image URL                   |
+| `cardSize`  | number | drawn-card size, fraction of board width (default ~0.12)        |
+
+**How sync works.** The deck API is server-stateful — creating a deck returns a
+`deck_id` that owns the shuffle/draw order. The first player to deal **creates** the
+deck and publishes its `deck_id` on a **retained** MQTT topic (`deck/<id>`); everyone
+else adopts it, so the whole room draws from the **same** deck in the same order, and
+late joiners pick it up automatically. A drawn card becomes an ordinary
+**image-backed piece** (its rendered PNG/SVG), carried on the marker itself — so it
+syncs, persists in `localStorage`, drags, and replays for late joiners like any token.
+The engine enforces nothing: anyone may draw, and a dealt card is just a piece.
+
+> Drawing calls `forge.cardsapi.com` from the browser, so a deck needs network access
+> (the rest of the engine does not). Without a `cardforge` selector you get the
+> standard 52-card deck; with one you get your CardForge project's rendered cards.
 
 ## Loading a pack
 

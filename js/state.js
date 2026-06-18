@@ -48,8 +48,16 @@
     }
 
     /* ---- local mutations (return the marker that should be broadcast) ---- */
-    add(type, x, y, by) {
+    // `extra` carries optional self-describing fields for pieces not declared in
+    // the pack — e.g. a drawn card: { img, label, sz }. They ride on the marker so
+    // a late joiner replaying retained state reconstructs the card with no context.
+    add(type, x, y, by, extra) {
       const m = { id: nowId(), type, x, y, t: Date.now(), by };
+      if (extra) {
+        if (extra.img) m.img = extra.img;
+        if (extra.label) m.label = extra.label;
+        if (extra.sz) m.sz = extra.sz;
+      }
       this.markers.set(m.id, m);
       this._save();
       this._emit('add', m);
